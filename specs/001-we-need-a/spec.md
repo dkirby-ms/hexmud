@@ -63,7 +63,7 @@ A developer adding a new domain feature (e.g., inventory, profile, dashboard) ca
 
 ### Functional Requirements
 
-- **FR-001**: Framework MUST provide a canonical top-level folder structure including (names may be adjusted for clarity while keeping purpose): `backend/`, `frontend/`, `shared/` (cross-cutting models/utilities), `infra/` (infrastructure & deployment descriptors), `scripts/` (automation), `tests/` (cross-layer or integration), `docs/` (high-level), and a root `README` referencing each area.
+- **FR-001**: Framework MUST provide a canonical top-level folder structure including (names may be adjusted for clarity while keeping purpose): `backend/`, `frontend/` (Vite + React scaffold), `shared/` (cross-cutting models/utilities), `infra/` (infrastructure & deployment descriptors), `scripts/` (automation), `tests/` (cross-layer or integration), `docs/` (high-level), and a root `README` referencing each area.
 - **FR-002**: Framework MUST include per-area README stubs describing purpose, allowed contents, and placement rules.
 - **FR-003**: Framework MUST supply environment configuration pattern (sample env file + documented precedence rules for local, staging, production) without embedding secrets in version control.
 - **FR-004**: Framework MUST define a standardized error response model (fields for code, message (user-safe), correlation id, and timestamp) applied across backend endpoints.
@@ -82,6 +82,7 @@ A developer adding a new domain feature (e.g., inventory, profile, dashboard) ca
 - **FR-017**: Framework MUST provide a contribution guide outlining code review expectations, naming patterns, and adding dependencies policy.
 - **FR-018**: Framework MUST enable deterministic build & startup steps with a single documented command each for backend and frontend.
  - **FR-019**: Framework MUST define non-functional expectations with concrete baselines: backend cold start ≤ 8s, frontend dev build ready ≤ 45s, steady-state backend RSS memory ≤ 300MB (subject to review as features accrue).
+ - **FR-020**: Framework MUST include baseline PostgreSQL integration scaffolding (configuration file sample, migration tool initialization with an empty initial migration, and a database health check route) without introducing domain persistence yet.
 
 ### Key Entities
 
@@ -143,4 +144,11 @@ All previous clarification markers have been resolved (FR-011, FR-012, FR-013) p
 
 ## Summary
 
-The specification defines a foundational project framework enabling consistent, secure, and extensible development for both backend and frontend, centered on a confidential client authentication model. Three critical decisions remain for confirmation (role model depth, token lifecycle approach, primary user auth method). All other areas are specified with testable, measurable outcomes.
+The specification defines a foundational project framework enabling consistent, secure, and extensible development for both backend and frontend (Vite + React), centered on a confidential client authentication model with a session token (HTTP-only cookie) approach. Prior critical decisions (role model depth = roles + permissions, token lifecycle = 60m access w/ silent renewal, primary auth method = external identity provider federation) are resolved and encoded. 
+
+Current pending decision gates (tracked in plan / tasks):
+- Whether to expand to authorization code + PKCE flow (decision at end of Milestone M2).
+- Scope and timing for introducing heavier OpenTelemetry tracing beyond lean logging (re-evaluate at M4 based on need).
+- Replay / determinism harness requirements for future Colyseus real-time extensions (assessment task to be added before non-trivial simulation logic).
+
+All other functional and non-functional requirements now have explicit or planned task coverage, with remaining ambiguities confined to future expansion decisions rather than baseline scaffold correctness.

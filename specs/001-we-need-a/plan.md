@@ -13,14 +13,15 @@ This plan outlines the technical approach and phased delivery steps to implement
 |-------|------------|---------|
 | Backend Core | Node.js + TypeScript | API, auth mediation, permission enforcement |
 | Real-time | Colyseus (rooms) | Optional multiplayer / session channels; foundation only now |
-| Frontend | Vite + TypeScript | Developer-friendly SPA scaffold (framework choice deferred: vanilla TS + minimal libs initially) |
+| Frontend | Vite + React + TypeScript | Developer-friendly SPA scaffold (constitution mandates React) |
 | Shared Contracts | TypeScript decls (`shared/`) | DTOs, enumerations, permission constants |
 | Auth Federation | `openid-client` (OIDC) | Confidential client token retrieval; session token issuing |
 | Logging | pino (structured) | Security & audit logs w/ correlation ids |
 | Metrics & Tracing | OpenTelemetry SDK + exporters (console placeholder) | token latency, scaffold timings, auth events |
 | Validation | zod (or valibot) | Input schemas (modular) |
-| Testing | vitest (frontend + shared) / jest or vitest (backend) / playwright (e2e later) | Automated verification |
+| Testing | vitest (frontend + shared + backend) / playwright (e2e later) | Unified test runner |
 | Packaging | pnpm workspaces (preferred) or npm workspaces | Monorepo consistency |
+| Persistence | PostgreSQL + migration tool (Prisma or Knex) | Future domain persistence readiness |
 
 ---
 ## 2. Repository / Directory Structure
@@ -88,6 +89,7 @@ tests/
 docs/
   architecture.md
   auth-flow.md
+  security-boundaries.md
   contributing.md
 
 pnpm-workspace.yaml (or package.json workspaces)
@@ -103,7 +105,7 @@ README.md
 4. No refresh token exposed to frontend; backend silently reacquires external access token prior to expiry (≈60m). Session token TTL aligned but shorter (e.g., 30m) to reduce risk.
 5. Audit + metrics: each token event logged (without secrets) & histogram for acquisition latency.
 
-Open design decision captured: confirm grant type expansion (authorization code w/ user browser redirect) in later milestone; initial milestone uses stub + mock provider for local dev.
+Open design decision captured: confirm grant type expansion (authorization code w/ user browser redirect) in later milestone (decision gate at end of M2); initial milestone uses stub + mock provider for local dev.
 
 ---
 ## 4. Authorization Model
@@ -165,6 +167,10 @@ Validation ensures no name collisions; logs scaffold event.
 
 Verification: add `npm run verify:baseline` script executing timed startup & memory snapshot; outputs JSON for CI gating (optional threshold warnings).
 
+Additional NFR validations:
+- Secret/material boundary scan ensures no confidential credentials appear in frontend bundle.
+- Token renewal scheduler test asserts renewal occurs ≥5 minutes before expiry.
+
 ---
 ## 10. Security Considerations
 
@@ -195,27 +201,37 @@ Verification: add `npm run verify:baseline` script executing timed startup & mem
 - Logging baseline + correlation id
 - Validation + lint + basic tests
 - Secret scanning & structure validation scripts
+- React integration (base App component)
+- Environment sample `.env.example`
 
 ### Milestone M2: Confidential Auth Foundation (P2)
 - OIDC client integration (mock + real configurable)
 - Session token issuing logic + cookie handling
 - Error envelope & security event logging
 - Metrics for token requests
+- Token renewal scheduler (silent re-acquisition)
+- Least-privilege scope configuration & validation
+- Security boundaries documentation draft
 
 ### Milestone M3: Authorization & Module Generation (P3)
 - Roles/permissions registry + middleware
 - Module scaffold script (routes + components + contracts)
 - Colyseus room bootstrap example (optional sample room)
+- Module creation time measurement script (ties to SC-002)
 
 ### Milestone M4: Observability & Performance Baseline
 - OpenTelemetry wiring (HTTP + custom spans)
 - Metrics endpoint & baseline dashboards doc
 - Baseline performance verification script
+- Correlation id completeness sampling tests (SC-006)
 
 ### Milestone M5: Hardening & Documentation
 - Expanded security docs (secret rotation, token renewal details)
 - Contribution guide completeness
 - Accessibility/i18n placeholders validated
+- Developer onboarding time trial (SC-001)
+- Documentation satisfaction survey (SC-007)
+- Final secret scan audit (SC-003)
 
 ---
 ## 13. Out of Scope (Current Feature)
@@ -233,5 +249,16 @@ Each milestone maps to FR & SC coverage; final checklist resides in `checklists/
 1. Approve plan.
 2. Initialize workspace configs (pnpm / tsconfig base).
 3. Execute M1 tasks in order defined in `tasks.md`.
+ 4. Add Constitution Check section updates after each milestone.
+
+---
+## 16. Constitution Check (Initial Snapshot)
+| Principle | Status | Notes |
+|-----------|--------|-------|
+| 1. Authoritative Server | N/A (no game state yet) | Future when simulation features arrive |
+| 2. Horizontal Scalability | Partial | Stateless scaffold; DB placeholder pending |
+| 3. Deterministic Simulation | N/A | No simulation loops yet |
+| 4. Lean Observability | Partial | Basic logs only initially; defer heavy tracing until justified |
+| 5. Security & Fair Play | Partial | Validation & auth foundation phased; renewal & scopes upcoming |
 
 ---
