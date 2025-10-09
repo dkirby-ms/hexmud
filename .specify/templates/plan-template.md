@@ -38,12 +38,13 @@ List each core principle (P1–P5) with pass/fail + evidence:
 | P1 | Authoritative Server Consistency | [PASS/FAIL] | e.g., Plan identifies authoritative state boundaries |
 | P2 | Horizontal Scalability & Stateless Edges | [PASS/FAIL] | e.g., Describes room sharding / no machine affinity |
 | P3 | Deterministic Simulation & Reproducibility | [PASS/FAIL/N/A] | e.g., Replay harness impact noted |
-| P4 | Observability & Performance Budgets | [PASS/FAIL] | Metrics/log additions listed |
+| P4 | Lean Observability & Performance Budgets | [PASS/FAIL] | If custom loop or >5% overhead: evidence; else rely on Colyseus stats |
 | P5 | Security, Fair Play & Data Integrity | [PASS/FAIL] | Validation & anti-cheat considerations |
 
 Performance & Resource Impact Summary:
 - Tick budget impact: [ESTIMATE or N/A]
-- New metrics: [LIST]
+- Custom high-frequency loop introduced: [YES/NO]
+- Added custom metrics/logs (justify if added): [LIST or N/A]
 - Schema migrations: [YES/NO + file names]
 - Redis keys (namespace + TTL): [LIST]
 
