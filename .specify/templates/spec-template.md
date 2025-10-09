@@ -113,3 +113,24 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+
+## Authoritative State & Determinism (Constitution P1 & P3)
+
+- Authoritative state touched/created: [LIST ENTITIES / ROOMS]
+- Client inputs accepted: [LIST & VALIDATION RULES]
+- Determinism considerations: [RANDOM SEED USAGE / REPLAY IMPACT]
+- Replay harness updates needed: [YES/NO + DETAILS]
+
+## Observability & Performance (Constitution P4)
+
+- New structured log events: [LIST]
+- Metrics (counters/gauges/histograms): [LIST]
+- Tick budget impact (estimate % of budget at target load): [VALUE]
+- Load test requirement: [YES/NO + CONDITIONS]
+
+## Security & Fair Play (Constitution P5)
+
+- Input validation schemas: [FILES / LIB]
+- Anti-cheat / anomaly rules added or impacted: [LIST]
+- Data integrity / migration notes: [MIGRATION FILES]
+- PII considerations: [YES/NO + JUSTIFICATION]

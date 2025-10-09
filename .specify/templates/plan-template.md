@@ -29,9 +29,25 @@
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design and before merge.*
 
-[Gates determined based on constitution file]
+List each core principle (P1–P5) with pass/fail + evidence:
+
+| Principle | Description (summary) | Status | Evidence / Notes |
+|-----------|-----------------------|--------|------------------|
+| P1 | Authoritative Server Consistency | [PASS/FAIL] | e.g., Plan identifies authoritative state boundaries |
+| P2 | Horizontal Scalability & Stateless Edges | [PASS/FAIL] | e.g., Describes room sharding / no machine affinity |
+| P3 | Deterministic Simulation & Reproducibility | [PASS/FAIL/N/A] | e.g., Replay harness impact noted |
+| P4 | Observability & Performance Budgets | [PASS/FAIL] | Metrics/log additions listed |
+| P5 | Security, Fair Play & Data Integrity | [PASS/FAIL] | Validation & anti-cheat considerations |
+
+Performance & Resource Impact Summary:
+- Tick budget impact: [ESTIMATE or N/A]
+- New metrics: [LIST]
+- Schema migrations: [YES/NO + file names]
+- Redis keys (namespace + TTL): [LIST]
+
+Waivers (if any): Reference Complexity Tracking table.
 
 ## Project Structure
 
