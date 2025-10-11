@@ -1,0 +1,62 @@
+openapi: 3.1.0
+info:
+  title: HexMUD Baseline Server API
+  version: 0.1.0
+  description: >-
+    Minimal HTTP surface for health and (optional) token introspection helper.
+servers:
+  - url: http://localhost:2567
+paths:
+  /healthz:
+    get:
+      summary: Health/Readiness Probe
+      operationId: getHealth
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  uptimeSeconds:
+                    type: number
+        '500':
+          description: Unhealthy
+  /version:
+    get:
+      summary: Protocol Version Info
+      operationId: getVersion
+      responses:
+        '200':
+          description: Protocol version numbers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  protocolVersion:
+                    type: integer
+                    example: 1
+  /auth/login-start:
+    post:
+      summary: (Optional) Server-assisted start of Auth Code flow (may be omitted if pure SPA)
+      operationId: loginStart
+      requestBody:
+        required: false
+      responses:
+        '200':
+          description: Authorization URL issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authUrl:
+                    type: string
+        '501':
+          description: Not implemented in baseline
+components: {}

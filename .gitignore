@@ -1,0 +1,20 @@
+# Node / pnpm
+node_modules/
+.pnpm-store/
+.pnpm/
+
+# Build artifacts
+dist/
+build/
+coverage/
+*.log
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Editor
+.vscode/
+.DS_Store
+.idea/
