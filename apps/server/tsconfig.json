@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": ".",
+    "outDir": "dist",
+    "types": ["node", "vitest"],
+    "moduleResolution": "node"
+  },
+  "include": ["src", "tests"],
+  "references": [
+    { "path": "../../packages/protocol" }
+  ]
+}

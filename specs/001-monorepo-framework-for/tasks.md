@@ -20,18 +20,18 @@ description: "Task list for monorepo framework baseline"
 ## Phase 1: Setup (Shared Infrastructure)
 **Purpose**: Initialize monorepo skeleton and baseline tooling.
 
-- [ ] T001 [ALL] Create root workspace scaffolding: `pnpm-workspace.yaml`, base folders (`apps/server`, `apps/web`, `packages/protocol`, `scripts`, `config`).
-- [ ] T002 [P] [ALL] Add root `package.json` with scripts: `bootstrap`, `dev`, `build`, `lint`, `test`, engines (Node>=22). (Path: `/home/saitcho/hexmud/package.json`).
-- [ ] T003 [P] [ALL] Add root `tsconfig.base.json` + `tsconfig.json` referencing base for composite builds.
-- [ ] T004 [P] [ALL] Initialize `packages/protocol/package.json` (exports types, module, sideEffects false) + `src/index.ts` stub.
-- [ ] T005 [P] [ALL] Initialize `apps/server/package.json` (depends on `protocol`).
-- [ ] T006 [P] [ALL] Initialize `apps/web/package.json` (depends on `protocol`).
-- [ ] T007 [P] [ALL] Configure ESLint + Prettier: `config/eslint.config.cjs`, `.prettierignore`, `.editorconfig`.
-- [ ] T008 [P] [ALL] Add `vitest.config.ts` at root supporting workspaces + coverage threshold placeholders.
-- [ ] T009 [P] [ALL] Add `.env.example` with MSAL + ports + protocol version environment placeholders.
-- [ ] T010 [P] [ALL] Create CONTRIBUTING.md & root README referencing quickstart + structure (FR-001, FR-013, FR-018).
-- [ ] T011 [P] [ALL] Add `scripts/bootstrap.ts` (Node) verifying Node & pnpm versions; fail fast (FR-002, SC-005).
-- [ ] T012 [P] [ALL] Add Git ignore `.gitignore` aligned with Node/TypeScript/coverage caches.
+- [x] T001 [ALL] Create root workspace scaffolding: `pnpm-workspace.yaml`, base folders (`apps/server`, `apps/web`, `packages/protocol`, `scripts`, `config`).
+- [x] T002 [P] [ALL] Add root `package.json` with scripts: `bootstrap`, `dev`, `build`, `lint`, `test`, engines (Node>=22). (Path: `/home/saitcho/hexmud/package.json`).
+- [x] T003 [P] [ALL] Add root `tsconfig.base.json` + `tsconfig.json` referencing base for composite builds.
+- [x] T004 [P] [ALL] Initialize `packages/protocol/package.json` (exports types, module, sideEffects false) + `src/index.ts` stub.
+- [x] T005 [P] [ALL] Initialize `apps/server/package.json` (depends on `protocol`).
+- [x] T006 [P] [ALL] Initialize `apps/web/package.json` (depends on `protocol`).
+- [x] T007 [P] [ALL] Configure ESLint + Prettier: `config/eslint.config.cjs`, `.prettierignore`, `.editorconfig`.
+- [x] T008 [P] [ALL] Add `vitest.config.ts` at root supporting workspaces + coverage threshold placeholders.
+- [x] T009 [P] [ALL] Add `.env.example` with MSAL + ports + protocol version environment placeholders.
+- [x] T010 [P] [ALL] Create CONTRIBUTING.md & root README referencing quickstart + structure (FR-001, FR-013, FR-018).
+- [x] T011 [P] [ALL] Add `scripts/bootstrap.ts` (Node) verifying Node & pnpm versions; fail fast (FR-002, SC-005).
+- [x] T012 [P] [ALL] Add Git ignore `.gitignore` aligned with Node/TypeScript/coverage caches.
 
 **Checkpoint**: Monorepo skeleton present; installs & lint run.
 
@@ -40,26 +40,26 @@ description: "Task list for monorepo framework baseline"
 **Purpose**: Core cross-cutting capabilities required before any story-specific slice.
 **Blocking**: All subsequent phases depend on completion.
 
-- [ ] T013 [ALL] Implement `packages/protocol/src/version.ts` exporting `PROTOCOL_VERSION = 1`.
-- [ ] T014 [P] [ALL] Implement protocol envelope & shared Zod schemas (`packages/protocol/src/messages/envelope.ts`).
-- [ ] T015 [P] [ALL] Add heartbeat + session.welcome + error message schemas (`packages/protocol/src/messages/core.ts`).
-- [ ] T016 [P] [ALL] Export index barrel re-exporting version, envelope, message schemas (`packages/protocol/src/index.ts`).
-- [ ] T017 [P] [ALL] Add TypeScript path mapping / references for protocol consumption by server & web (`tsconfig.base.json`).
-- [ ] T018 [ALL] Implement root `pnpm dev` script with concurrently: `server:dev`, `web:dev`.
-- [ ] T019 [P] [ALL] Implement `apps/server/src/config/env.ts` reading env + defaults (ports, log level, protocolVersion).
-- [ ] T020 [P] [ALL] Implement `apps/server/src/logging/logger.ts` (light JSON console wrapper) (FR-010 baseline).
-- [ ] T021 [P] [ALL] Implement metrics interface stub `apps/server/src/metrics/adapter.ts` (FR-017 placeholder).
-- [ ] T022 [P] [ALL] Implement validation util `apps/server/src/validation/validateMessage.ts` using Zod.
-- [ ] T023 [P] [ALL] Implement rate limit placeholder `apps/server/src/ratelimit/tokenBucket.ts` (in-memory, configurable).
-- [ ] T024 [ALL] Add `apps/server/src/state/sessions.ts` managing PlayerSession & PlayerIdentity registry (in-memory).
-- [ ] T025 [P] [ALL] Add `apps/server/src/state/rooms.ts` minimal room manager (create/get placeholder room).
-- [ ] T026 [P] [ALL] Add Express integration + Colyseus server bootstrap `apps/server/src/server.ts` (health + version endpoints) (FR-009).
-- [ ] T027 [P] [ALL] Add Vite config `apps/web/vite.config.ts` with React + path aliases for protocol.
-- [ ] T028 [P] [ALL] Add `apps/web/src/main.tsx` + basic React root + status UI placeholder.
-- [ ] T029 [P] [ALL] Add MSAL configuration placeholder `apps/web/src/services/auth/msalConfig.ts` (no runtime secret) (foundation for US3 but safe early).
-- [ ] T030 [ALL] Add `apps/web/src/services/protocol/client.ts` (Colyseus Client connect wrapper stub).
-- [ ] T031 [ALL] Add root `pnpm test` script + initial empty test suites directories.
-- [ ] T032 [ALL] Add simple health test (vitest) hitting Express server (ensures foundation works) `apps/server/tests/integration/health.test.ts`.
+- [x] T013 [ALL] Implement `packages/protocol/src/version.ts` exporting `PROTOCOL_VERSION = 1`.
+- [x] T014 [P] [ALL] Implement protocol envelope & shared Zod schemas (`packages/protocol/src/messages/envelope.ts`).
+- [x] T015 [P] [ALL] Add heartbeat + session.welcome + error message schemas (`packages/protocol/src/messages/core.ts`).
+- [x] T016 [P] [ALL] Export index barrel re-exporting version, envelope, message schemas (`packages/protocol/src/index.ts`).
+- [x] T017 [P] [ALL] Add TypeScript path mapping / references for protocol consumption by server & web (`tsconfig.base.json`).
+- [x] T018 [ALL] Implement root `pnpm dev` script with concurrently: `server:dev`, `web:dev`.
+- [x] T019 [P] [ALL] Implement `apps/server/src/config/env.ts` reading env + defaults (ports, log level, protocolVersion).
+- [x] T020 [P] [ALL] Implement `apps/server/src/logging/logger.ts` (light JSON console wrapper) (FR-010 baseline).
+- [x] T021 [P] [ALL] Implement metrics interface stub `apps/server/src/metrics/adapter.ts` (FR-017 placeholder).
+- [x] T022 [P] [ALL] Implement validation util `apps/server/src/validation/validateMessage.ts` using Zod.
+- [x] T023 [P] [ALL] Implement rate limit placeholder `apps/server/src/ratelimit/tokenBucket.ts` (in-memory, configurable).
+- [x] T024 [ALL] Add `apps/server/src/state/sessions.ts` managing PlayerSession & PlayerIdentity registry (in-memory).
+- [x] T025 [P] [ALL] Add `apps/server/src/state/rooms.ts` minimal room manager (create/get placeholder room).
+- [x] T026 [P] [ALL] Add Express integration + Colyseus server bootstrap `apps/server/src/server.ts` (health + version endpoints) (FR-009).
+- [x] T027 [P] [ALL] Add Vite config `apps/web/vite.config.ts` with React + path aliases for protocol.
+- [x] T028 [P] [ALL] Add `apps/web/src/main.tsx` + basic React root + status UI placeholder.
+- [x] T029 [P] [ALL] Add MSAL configuration placeholder `apps/web/src/services/auth/msalConfig.ts` (no runtime secret) (foundation for US3 but safe early).
+- [x] T030 [ALL] Add `apps/web/src/services/protocol/client.ts` (Colyseus Client connect wrapper stub).
+- [x] T031 [ALL] Add root `pnpm test` script + initial empty test suites directories.
+- [x] T032 [ALL] Add simple health test (vitest) hitting Express server (ensures foundation works) `apps/server/tests/integration/health.test.ts`.
 
 **Checkpoint**: Foundation ready—server boots, web skeleton builds, shared protocol imported.
 
@@ -69,19 +69,19 @@ description: "Task list for monorepo framework baseline"
 **Independent Test**: Fresh clone → `pnpm bootstrap && pnpm dev` results in server listening, web UI shows "Connected to game world" within 5s; Ctrl+C shuts both down cleanly.
 
 ### Tests (US1)
-- [ ] T033 [P] [US1] Add integration test spawning server and simulating a Colyseus client joining placeholder room (no auth) `apps/server/tests/integration/roomJoin.test.ts`.
-- [ ] T034 [P] [US1] Add web component test verifying connection status UI updates after handshake `apps/web/tests/contract/connectionStatus.test.tsx`.
-- [ ] T035 [P] [US1] Add watch propagation test: modify protocol constant mock & assert rebuild detection (script) `packages/protocol/tests/watchPropagation.test.ts` (may use fs timestamp diff).
+- [x] T033 [P] [US1] Add integration test spawning server and simulating a Colyseus client joining placeholder room (no auth) `apps/server/tests/integration/roomJoin.test.ts`.
+- [x] T034 [P] [US1] Add web component test verifying connection status UI updates after handshake `apps/web/tests/contract/connectionStatus.test.tsx`.
+- [x] T035 [P] [US1] Add watch propagation test: modify protocol constant mock & assert rebuild detection (script) `packages/protocol/tests/watchPropagation.test.ts` (may use fs timestamp diff).
 
 ### Implementation (US1)
-- [ ] T036 [P] [US1] Implement Colyseus Room class `apps/server/src/rooms/PlaceholderRoom.ts` broadcasting `room.state` at interval.
-- [ ] T037 [US1] Wire room definition in server bootstrap (`server.ts`) with `gameServer.define('placeholder', PlaceholderRoom)`.
-- [ ] T038 [P] [US1] Implement client connection logic `apps/web/src/protocol/placeholderClient.ts` (connect + listen for state).
-- [ ] T039 [P] [US1] Implement React hook `useGameConnection` `apps/web/src/hooks/useGameConnection.ts` exposing state & heartbeat latency.
-- [ ] T040 [US1] Render placeholder world component `apps/web/src/components/WorldPlaceholder.tsx` using hook.
-- [ ] T041 [US1] Add graceful shutdown signal handling in `apps/server/src/server.ts` (SIGINT -> gameServer.shutdown).
-- [ ] T042 [US1] Add README section "Quick Start" referencing US1 test criteria.
-- [ ] T043 [US1] Update quickstart.md with actual commands & placeholders replaced.
+- [x] T036 [P] [US1] Implement Colyseus Room class `apps/server/src/rooms/PlaceholderRoom.ts` broadcasting `room.state` at interval.
+- [x] T037 [US1] Wire room definition in server bootstrap (`server.ts`) with `gameServer.define('placeholder', PlaceholderRoom)`.
+- [x] T038 [P] [US1] Implement client connection logic `apps/web/src/protocol/placeholderClient.ts` (connect + listen for state).
+- [x] T039 [P] [US1] Implement React hook `useGameConnection` `apps/web/src/hooks/useGameConnection.ts` exposing state & heartbeat latency.
+- [x] T040 [US1] Render placeholder world component `apps/web/src/components/WorldPlaceholder.tsx` using hook.
+- [x] T041 [US1] Add graceful shutdown signal handling in `apps/server/src/server.ts` (SIGINT -> gameServer.shutdown).
+- [x] T042 [US1] Add README section "Quick Start" referencing US1 test criteria.
+- [x] T043 [US1] Update quickstart.md with actual commands & placeholders replaced.
 
 **Checkpoint**: US1 independently deliverable (MVP). Proceed to US2 only after merging US1 if incremental delivery desired.
 
@@ -91,17 +91,17 @@ description: "Task list for monorepo framework baseline"
 **Independent Test**: Modify message schema field & observe type availability in server & web without manual path change; simulate version mismatch triggers warning.
 
 ### Tests (US2)
-- [ ] T044 [P] [US2] Add unit test validating `PROTOCOL_VERSION` export & numeric type `packages/protocol/tests/version.test.ts`.
-- [ ] T045 [P] [US2] Add integration test: server rejects join with client version +1 (simulate mismatch) `apps/server/tests/integration/versionMismatch.test.ts`.
-- [ ] T046 [P] [US2] Add validation test: malformed envelope → error message `apps/server/tests/unit/validation.test.ts`.
+- [x] T044 [P] [US2] Add unit test validating `PROTOCOL_VERSION` export & numeric type `packages/protocol/tests/version.test.ts`.
+- [x] T045 [P] [US2] Add integration test: server rejects join with client version +1 (simulate mismatch) `apps/server/tests/integration/versionMismatch.test.ts`.
+- [x] T046 [P] [US2] Add validation test: malformed envelope → error message `apps/server/tests/unit/validation.test.ts`.
 
 ### Implementation (US2)
-- [ ] T047 [P] [US2] Implement protocol version guard in join handler (server state/session join path) `apps/server/src/handlers/join.ts`.
-- [ ] T048 [P] [US2] Implement structured error sender helper `apps/server/src/handlers/error.ts`.
-- [ ] T049 [US2] Expose additional sample message schema update (e.g., add `build:number` to welcome) & propagate to client UI display.
-- [ ] T050 [P] [US2] Add dev script to bump protocol version `scripts/bump-protocol-version.ts` updating version.ts & CHANGELOG entry.
-- [ ] T051 [US2] Add documentation section in README: "Protocol Versioning & Breaking Changes".
-- [ ] T052 [US2] Add watch mode note & troubleshooting in quickstart.md.
+- [x] T047 [P] [US2] Implement protocol version guard in join handler (server state/session join path) `apps/server/src/handlers/join.ts`.
+- [x] T048 [P] [US2] Implement structured error sender helper `apps/server/src/handlers/error.ts`.
+- [x] T049 [US2] Expose additional sample message schema update (e.g., add `build:number` to welcome) & propagate to client UI display.
+- [x] T050 [P] [US2] Add dev script to bump protocol version `scripts/bump-protocol-version.ts` updating version.ts & CHANGELOG entry.
+- [x] T051 [US2] Add documentation section in README: "Protocol Versioning & Breaking Changes".
+- [x] T052 [US2] Add watch mode note & troubleshooting in quickstart.md.
 
 **Checkpoint**: US2 ensures safe shared evolution; independent from auth.
 
@@ -111,20 +111,20 @@ description: "Task list for monorepo framework baseline"
 **Independent Test**: Unauthenticated join rejected; after MSAL login join succeeds; expired token refresh path executes.
 
 ### Tests (US3)
-- [ ] T053 [P] [US3] Unit test: join without token -> `AUTH_REQUIRED` error `apps/server/tests/unit/authGuard.test.ts`.
-- [ ] T054 [P] [US3] Integration test: simulated token (mock JWKS) accepted `apps/server/tests/integration/authJoin.test.ts`.
-- [ ] T055 [P] [US3] Web auth hook test verifying MSAL acquireToken & rejoin `apps/web/tests/unit/authHook.test.ts`.
+- [x] T053 [P] [US3] Unit test: join without token -> `AUTH_REQUIRED` error `apps/server/tests/unit/authGuard.test.ts`.
+- [x] T054 [P] [US3] Integration test: simulated token (mock JWKS) accepted `apps/server/tests/integration/authJoin.test.ts`.
+- [x] T055 [P] [US3] Web auth hook test verifying MSAL acquireToken & rejoin `apps/web/tests/unit/authHook.test.ts`.
 
 ### Implementation (US3)
-- [ ] T056 [P] [US3] Implement JWKS fetch & cache util `apps/server/src/auth/jwks.ts`.
-- [ ] T057 [P] [US3] Implement token validator `apps/server/src/auth/validateToken.ts` (signature, expiry, audience checks).
-- [ ] T058 [US3] Integrate auth guard into join handler (modify `handlers/join.ts`) returning structured errors.
-- [ ] T059 [P] [US3] Implement MSAL browser setup `apps/web/src/services/auth/initMsal.ts` (PublicClientApplication instance).
-- [ ] T060 [P] [US3] Implement React auth hook `useAuth` `apps/web/src/hooks/useAuth.ts` (login, logout, get token, silent renew placeholder).
-- [ ] T061 [P] [US3] Wire token acquisition into `useGameConnection` (include token on join).
-- [ ] T062 [US3] Update placeholder UI to show authenticated playerId `apps/web/src/components/WorldPlaceholder.tsx`.
-- [ ] T063 [US3] Update README & quickstart with auth setup instructions & .env variables (FR-007, FR-020).
-- [ ] T064 [US3] Add structured log events for auth lifecycle `apps/server/src/logging/events.ts`.
+- [x] T056 [P] [US3] Implement JWKS fetch & cache util `apps/server/src/auth/jwks.ts`.
+- [x] T057 [P] [US3] Implement token validator `apps/server/src/auth/validateToken.ts` (signature, expiry, audience checks).
+- [x] T058 [US3] Integrate auth guard into join handler (modify `handlers/join.ts`) returning structured errors.
+- [x] T059 [P] [US3] Implement MSAL browser setup `apps/web/src/services/auth/initMsal.ts` (PublicClientApplication instance).
+- [x] T060 [P] [US3] Implement React auth hook `useAuth` `apps/web/src/hooks/useAuth.ts` (login, logout, get token, silent renew placeholder).
+- [x] T061 [P] [US3] Wire token acquisition into `useGameConnection` (include token on join).
+- [x] T062 [US3] Update placeholder UI to show authenticated playerId `apps/web/src/components/WorldPlaceholder.tsx`.
+- [x] T063 [US3] Update README & quickstart with auth setup instructions & .env variables (FR-007, FR-020).
+- [x] T064 [US3] Add structured log events for auth lifecycle `apps/server/src/logging/events.ts`.
 
 **Checkpoint**: All three user stories independently testable.
 
@@ -132,7 +132,7 @@ description: "Task list for monorepo framework baseline"
 ## Phase 6: Polish & Cross-Cutting Concerns
 **Purpose**: Hardening and refinement after core stories.
 
-- [ ] T065 [P] Add structured logging format enhancements (correlation id) `apps/server/src/logging/logger.ts`.
+- [x] T065 [P] Add structured logging format enhancements (correlation id) `apps/server/src/logging/logger.ts`.
 - [ ] T066 [P] Add metrics event emission (sessions_total, sessions_active) instrumentation `apps/server/src/metrics/adapter.ts` & integrate in session events.
 - [ ] T067 [P] Add load test script stub `scripts/load-test.ts` (simulate 100 concurrent sessions) (SC-006 prep).
 - [ ] T068 [P] Add rate limit enforcement to heartbeat path & unit test `apps/server/tests/unit/ratelimit.test.ts`.

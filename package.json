@@ -1,0 +1,33 @@
+{
+  "name": "hexmud",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.10.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "bootstrap": "pnpm dlx tsx@4.19.1 scripts/bootstrap.ts",
+    "dev": "concurrently -n server,web -c cyan,magenta \"pnpm run server:dev\" \"pnpm run web:dev\"",
+    "server:dev": "pnpm --filter @hexmud/server dev",
+    "web:dev": "pnpm --filter @hexmud/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "bump:protocol": "pnpm dlx tsx scripts/bump-protocol-version.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.8.1",
+    "@typescript-eslint/parser": "^8.8.1",
+    "eslint": "^9.12.0",
+    "eslint-config-prettier": "^9.1.0",
+  "concurrently": "^9.1.0",
+  "eslint-plugin-import": "^2.29.1",
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}
