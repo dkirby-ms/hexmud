@@ -24,6 +24,7 @@ export interface UseAuthResult {
   accessToken: string | null;
   error?: string;
   signIn: () => Promise<AuthActionResult>;
+  signInRedirect: () => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => Promise<string | null>;
   ensureAccessToken: () => Promise<string | null>;
@@ -196,6 +197,26 @@ export const useAuth = (): UseAuthResult => {
     }
   }, []);
 
+  const signInRedirect = useCallback(async (): Promise<void> => {
+    const instance = instanceRef.current;
+    if (!instance) {
+      return;
+    }
+    // If already authenticated, no-op
+    if (state.status === 'authenticated') {
+      return;
+    }
+    try {
+      await instance.loginRedirect({ scopes: msalScopes.length > 0 ? [...msalScopes] : ['openid'] });
+      // Redirect will leave page; post-redirect flow handled in initialization effect via handleRedirectPromise.
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Redirect sign-in failed';
+      if (mountedRef.current) {
+        setState({ status: 'unauthenticated', account: null, accessToken: null, error: message });
+      }
+    }
+  }, [state.status]);
+
   const signOut = useCallback(async () => {
     const instance = instanceRef.current;
     if (!instance) {
@@ -247,10 +268,11 @@ export const useAuth = (): UseAuthResult => {
       accessToken: state.accessToken,
       error: state.error,
       signIn,
+      signInRedirect,
       signOut,
       refresh,
       ensureAccessToken
     }),
-    [state, signIn, signOut, refresh, ensureAccessToken]
+    [state, signIn, signInRedirect, signOut, refresh, ensureAccessToken]
   );
 };
