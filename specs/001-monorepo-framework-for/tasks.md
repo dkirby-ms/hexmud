@@ -133,13 +133,13 @@ description: "Task list for monorepo framework baseline"
 **Purpose**: Hardening and refinement after core stories.
 
 - [x] T065 [P] Add structured logging format enhancements (correlation id) `apps/server/src/logging/logger.ts`.
-- [ ] T066 [P] Add metrics event emission (sessions_total, sessions_active) instrumentation `apps/server/src/metrics/adapter.ts` & integrate in session events.
-- [ ] T067 [P] Add load test script stub `scripts/load-test.ts` (simulate 100 concurrent sessions) (SC-006 prep).
-- [ ] T068 [P] Add rate limit enforcement to heartbeat path & unit test `apps/server/tests/unit/ratelimit.test.ts`.
-- [ ] T069 Documentation pass: finalize CONTRIBUTING (commit message guide) & protocol change workflow.
-- [ ] T070 Add CI pipeline config stub (GitHub Actions) running lint + test matrix Node 22.
-- [ ] T071 Validate quickstart against clean clone script (automate) `scripts/validate-quickstart.ts`.
-- [ ] T072 Security review checklist doc `specs/001-monorepo-framework-for/security-review.md` summarizing guards.
+- [x] T066 [P] Add metrics event emission (sessions_total, sessions_active) instrumentation `apps/server/src/metrics/adapter.ts` & integrate in session events.
+- [x] T067 [P] Add load test script stub `scripts/load-test.ts` (simulate 100 concurrent sessions) (SC-006 prep).
+- [x] T068 [P] Add rate limit enforcement to heartbeat path & unit test `apps/server/tests/unit/ratelimit.test.ts`.
+- [x] T069 Documentation pass: finalize CONTRIBUTING (commit message guide) & protocol change workflow.
+- [x] T070 Add CI pipeline config stub (GitHub Actions) running lint + test matrix Node 22.
+- [x] T071 Validate quickstart against clean clone script (automate) `scripts/validate-quickstart.ts`.
+- [x] T072 Security review checklist doc `specs/001-monorepo-framework-for/security-review.md` summarizing guards.
 
 ---
 ## Dependencies & Execution Order

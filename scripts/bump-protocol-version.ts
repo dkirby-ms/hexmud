@@ -18,7 +18,7 @@ const fail = (message: string): never => {
 
 const parseVersionArgument = (): number => {
   const raw = process.argv[2];
-  if (!raw) {
+  if (typeof raw !== 'string') {
     fail('Usage: pnpm dlx tsx scripts/bump-protocol-version.ts <next-version>');
   }
   const parsed = Number.parseInt(raw, 10);
@@ -30,9 +30,10 @@ const parseVersionArgument = (): number => {
 
 const readVersionFile = async () => {
   const source = await readFile(versionFilePath, 'utf8');
-  const match = source.match(/PROTOCOL_VERSION\s*=\s*(\d+)/) ?? fail(
-    `Unable to find PROTOCOL_VERSION assignment in ${versionFilePath}`
-  );
+  const match = source.match(/PROTOCOL_VERSION\s*=\s*(\d+)/);
+  if (!match || typeof match[1] !== 'string') {
+    fail(`Unable to find PROTOCOL_VERSION assignment in ${versionFilePath}`);
+  }
   const currentVersion = Number.parseInt(match[1], 10);
   return { source, currentVersion };
 };

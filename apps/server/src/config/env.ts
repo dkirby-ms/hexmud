@@ -48,6 +48,11 @@ export interface ServerEnv {
   heartbeatIntervalMs: number;
   heartbeatTimeoutMs: number;
   metricsEnabled: boolean;
+  heartbeatRateLimit: {
+    capacity: number;
+    refillAmount: number;
+    refillIntervalMs: number;
+  };
   msal: {
     clientId: string | null;
     tenantId: string | null;
@@ -69,6 +74,11 @@ export const env: ServerEnv = {
   heartbeatIntervalMs: parseNumber(process.env.HEARTBEAT_INTERVAL_MS, 5_000),
   heartbeatTimeoutMs: parseNumber(process.env.HEARTBEAT_TIMEOUT_MS, 30_000),
   metricsEnabled: parseBoolean(process.env.METRICS_ENABLED, false),
+  heartbeatRateLimit: {
+    capacity: parseNumber(process.env.HEARTBEAT_RATE_LIMIT_CAPACITY, 3),
+    refillAmount: parseNumber(process.env.HEARTBEAT_RATE_LIMIT_REFILL_AMOUNT, 1),
+    refillIntervalMs: parseNumber(process.env.HEARTBEAT_RATE_LIMIT_INTERVAL_MS, 1_000)
+  },
   msal: {
     clientId: process.env.MSAL_CLIENT_ID ?? null,
     tenantId: process.env.MSAL_TENANT_ID ?? null,

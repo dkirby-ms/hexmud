@@ -31,3 +31,24 @@ export const metrics = {
     });
   }
 };
+
+const fireAndForget = (event: MetricsEvent): void => {
+  void metrics.emit(event).catch(() => {
+    // Suppress metrics emission errors in baseline implementation.
+  });
+};
+
+export const recordSessionCreated = (dimensions?: MetricsDimensions): void => {
+  fireAndForget({
+    name: 'sessions_total',
+    value: 1,
+    dimensions
+  });
+};
+
+export const recordActiveSessionCount = (count: number): void => {
+  fireAndForget({
+    name: 'sessions_active',
+    value: count
+  });
+};

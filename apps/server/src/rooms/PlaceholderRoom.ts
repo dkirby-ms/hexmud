@@ -9,6 +9,7 @@ import {
   type JoinOptions
 } from '../handlers/join.js';
 import { logger, loggingContext } from '../logging/logger.js';
+import { HeartbeatRateLimiter } from '../ratelimit/heartbeat.js';
 import { rooms } from '../state/rooms.js';
 import { sessions } from '../state/sessions.js';
 import type { MessageValidationError } from '../validation/validateMessage.js';
@@ -18,6 +19,7 @@ const ROOM_MESSAGE = 'The placeholder world hums quietly.';
 
 export class PlaceholderRoom extends Room {
   private broadcastIntervalId: ReturnType<typeof setInterval> | null = null;
+  private readonly heartbeatLimiter = new HeartbeatRateLimiter(env.heartbeatRateLimit);
 
   override onCreate(): void {
     rooms.ensure(this.roomId, env.protocolVersion);
@@ -32,6 +34,16 @@ export class PlaceholderRoom extends Room {
   const payload = validated.payload;
 
         if (envelope.type === 'heartbeat') {
+          if (!this.heartbeatLimiter.consume(client.sessionId)) {
+            client.send(
+              'envelope',
+              createEnvelope('error', {
+                code: errorCodeSchema.enum.RATE_LIMIT,
+                message: 'RATE_LIMIT: heartbeat frequency exceeded'
+              })
+            );
+            return;
+          }
           heartbeatPayloadSchema.parse(payload);
           sessions.updateSession(client.sessionId, { lastHeartbeatAt: new Date() });
           client.send('envelope', createEnvelope('heartbeat', {}));
@@ -146,6 +158,7 @@ export class PlaceholderRoom extends Room {
     try {
       sessions.removeSession(client.sessionId);
       rooms.removeSession(this.roomId, client.sessionId);
+      this.heartbeatLimiter.clear(client.sessionId);
 
       logger.info('room.placeholder.left', {
         roomId: this.roomId,
@@ -161,6 +174,8 @@ export class PlaceholderRoom extends Room {
       clearInterval(this.broadcastIntervalId);
       this.broadcastIntervalId = null;
     }
+
+    this.heartbeatLimiter.clearAll();
 
     logger.info('room.placeholder.disposed', {
       roomId: this.roomId

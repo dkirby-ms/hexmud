@@ -15,7 +15,9 @@
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "bump:protocol": "pnpm dlx tsx scripts/bump-protocol-version.ts"
+    "bump:protocol": "pnpm dlx tsx scripts/bump-protocol-version.ts",
+    "load:test": "pnpm exec tsx scripts/load-test.ts",
+    "validate:quickstart": "pnpm exec tsx scripts/validate-quickstart.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
