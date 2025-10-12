@@ -94,7 +94,7 @@ Additional user stories (e.g., persistence scaffold, CI integration) will be add
 - **FR-005**: A version bump or change in a shared package MUST propagate to dependents without manual path updates (workspace linking / dependency graph in place).
 - **FR-006**: The framework MUST enforce that only authenticated clients can join a game session; unauthenticated attempts are rejected with a structured error.
 - **FR-007**: The repository MUST include environment configuration templates (e.g., sample env file) segregating secrets from committed code.
-- **FR-008**: The system MUST provide a minimal lobby or placeholder world state broadcast that clients can subscribe to after authentication.
+- **FR-008**: Once a client is authenticated the system MUST establish an authenticated session-level subscription to a minimal "world" / lobby event stream (global placeholder world state broadcast) that is conceptually distinct from any future gameplay / shard / instance rooms the player may join. A temporary unauthenticated placeholder broadcast is permitted only during pre-auth baseline development (US1/US2) and MUST be gated behind authentication once FR-006 is delivered.
 - **FR-009**: The framework MUST include basic health/status endpoints or checks to confirm server readiness.
 - **FR-010**: The system MUST log session lifecycle events (connect, authenticate, join, disconnect) in a structured, parseable format.
 - **FR-011**: The framework MUST define validation rules for incoming client commands (shape, rate limit placeholder) to prevent malformed or excessive inputs.
@@ -172,6 +172,7 @@ All initial clarification topics have been resolved (grant strategy chosen, conc
 1. OAuth strategy: Authorization Code + PKCE (public SPA obtains tokens directly; server validates access tokens).
 2. Baseline concurrency: 100 concurrent active player sessions (used in FR-021 & SC-006).
 3. Persistence: Deferred; extension points only (no storage layer in baseline).
+4. FR-008 Scope: World/lobby broadcast is an authenticated session channel separate from gameplay rooms; early unauth broadcast allowed solely for fast baseline prior to authentication completion.
 
 ## Out of Scope (Explicitly)
 

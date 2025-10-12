@@ -37,7 +37,7 @@ List each core principle (P1–P5) with pass/fail + evidence:
 |-----------|-----------------------|--------|------------------|
 | P1 | Authoritative Server Consistency | PASS | Token validated server-side; session binding only after validation |
 | P2 | Horizontal Scalability & Stateless Edges | PASS | No sticky auth state; pure stateless token verification per join |
-| P3 | Deterministic Simulation & Reproducibility | N/A | No simulation logic added; replay harness only needs ability to inject tokens |
+| P3 | Deterministic Simulation & Reproducibility | PASS | Replay harness will be updated (T067) to allow deterministic token injection & invalid token scenarios; no nondeterministic simulation introduced |
 | P4 | Lean Observability & Performance Budgets | PASS | Only minimal structured auth events; no new loop; estimated <3% tick impact |
 | P5 | Security, Fair Play & Data Integrity | PASS | Strict token validation, structured logging, minimal PII retention, env-driven config |
 
@@ -104,7 +104,7 @@ specs/
 |-----------|--------|-------|
 | P1 | PASS | Server-only token validation maintained |
 | P2 | PASS | No stateful affinity; token per request |
-| P3 | N/A | No simulation changes introduced |
+| P3 | PASS | Replay harness token injection extension planned (T067); no nondeterministic simulation added |
 | P4 | PASS | Minimal logging; no perf gate breach |
 | P5 | PASS | Validation, minimal PII, env-based config |
 

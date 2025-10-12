@@ -58,7 +58,7 @@ An authenticated user remains active; the system renews/refreshes identity befor
 - Revoked / disabled account: token structurally valid but backend claim check fails and returns unauthorized with reason code.
 - Tampered token (signature invalid): rejected; security event logged; no information leak beyond generic unauthorized.
 - Missing essential claim (e.g., unique user id): reject and log validation error.
-- JWKS / key set rotation timing: temporarily cache previous key set to accept overlapping signing keys (deterministic selection).
+- JWKS / key set rotation timing: system MUST cache current and previous JWKS for an overlap window (default 10m) to avoid transient validation failures during rotation.
 - Network drop during renewal: queued renewal retries with exponential backoff until grace window exceeded.
 
 ## Requirements *(mandatory)*
@@ -72,14 +72,14 @@ An authenticated user remains active; the system renews/refreshes identity befor
 - **FR-005**: The backend MUST reject any request lacking a valid token with a standardized unauthorized response (code + human-readable reason class) without revealing sensitive validation details.
 - **FR-006**: The system MUST establish a server-side session structure linking the validated user identifier and any authorization claims for later gameplay authorization decisions.
 - **FR-007**: The system MUST renew/refresh identity before expiry without interrupting active sessions: begin silent renewal when < 5 minutes remain before token expiry and retry every 60 seconds until success or expiry.
-- **FR-008**: The system MUST define and enforce a minimal authorization model consisting of a baseline "player" identity plus an optional "moderator" flag for elevated moderation capabilities.
-- **FR-009**: The system MUST accept any external identity issued by the configured external identity provider (open policy) without tenant/domain restriction in this iteration; future tightening may introduce allow/deny lists.
-- **FR-010**: The system MUST log security-relevant events: sign‑in success, sign‑in failure (categorized), token validation failure (reason class), sign‑out, token renewal outcome.
-- **FR-011**: The system MUST expose metrics for: active authenticated sessions, token validation failures (by reason), average success sign‑in latency, renewal success rate.
+- **FR-008**: The system MUST define and enforce a minimal authorization model consisting of a baseline "player" identity plus an optional "moderator" flag for elevated moderation capabilities. Moderator detection order: (1) boolean claim `moderator === true`; else (2) `roles` array contains literal `moderator`; else absent. No additional dynamic role parsing this iteration.
+- **FR-009**: The system MUST accept any external identity issued by the configured external identity provider (open policy) without tenant/domain restriction in this iteration; future tightening may introduce allow/deny lists. Implementation MUST log (info/debug) issuer (`iss`) and tenant/directory identifier claim (if present) for each successful validation to support future restriction analysis.
+- **FR-010**: The system MUST log security-relevant events: sign‑in success, sign‑in failure (categorized), token validation failure (reason class), sign‑out, token renewal outcome. Each event MUST include correlation id `authCorrId` (ULID or UUIDv7) stable for a single auth attempt / validation, propagated client→server where applicable. Canonical event names: `auth.signin.success`, `auth.signin.failure`, `auth.token.validation.failure`, `auth.signout`, `auth.renewal.success`, `auth.renewal.failure` (no additions without plan/spec update).
+- **FR-011**: The system MUST expose metrics for: active authenticated sessions (gauge), total token validations (counter), token validation failures (counter with reason label in fixed enum `expired|signature|nbfSkew|claimMissing|revoked|other`), sign‑in duration (histogram), join auth overhead latency (histogram), renewal success/failure counters, renewal latency (histogram). SC-002 computed as failures / total validations.
 - **FR-012**: The system MUST gracefully handle identity provider unavailability (retry with backoff; user feedback without freezing UI).
 - **FR-013**: The system MUST ensure sign‑out clears local auth artifacts so subsequent protected actions fail until re-authenticated.
 - **FR-014**: The system MUST prevent replay of expired tokens (no grace beyond configured skew) and reject tokens with altered critical claims (detected via signature mismatch).
-- **FR-015**: The system MUST avoid storing long-term sensitive secrets in the client; only volatile tokens and minimal claim metadata.
+- **FR-015**: The system MUST avoid storing long-term sensitive secrets in the client; only volatile tokens and minimal claim metadata. Tokens MUST reside only in memory (React state); neither localStorage, sessionStorage nor IndexedDB may store raw tokens. A sentinel key (no token material) MAY be used in localStorage to broadcast multi-tab sign-out.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -117,8 +117,8 @@ An authenticated user remains active; the system renews/refreshes identity befor
 
 ## Observability & Performance (Constitution P4)
 
-- New structured log events: auth.signin.success, auth.signin.failure (reason), auth.token.validate.failure (reason, claimMissing|signature|expired|tenantPolicy), auth.token.validate.success, auth.renewal.success, auth.renewal.failure (reason), auth.signout
-- Metrics: counter.auth.signin.success, counter.auth.signin.failure (labels reason), counter.auth.token.validation.failure (labels reason), gauge.auth.sessions.active, histogram.auth.signin.duration, histogram.auth.renewal.latency, counter.auth.renewal.failure
+- New structured log events (canonical set per FR-010): auth.signin.success, auth.signin.failure (reason), auth.token.validation.failure (reason), auth.signout, auth.renewal.success, auth.renewal.failure (reason). Optional internal success event `auth.token.validation.success` MAY be emitted (not required). All include `authCorrId`.
+- Metrics (FR-011): counter.auth.signin.success, counter.auth.signin.failure (labels reason), counter.auth.token.validation.total, counter.auth.token.validation.failure (labels reason), gauge.auth.sessions.active, histogram.auth.signin.duration, histogram.auth.join.latency.authOverhead, histogram.auth.renewal.latency, counter.auth.renewal.success, counter.auth.renewal.failure.
 - Tick budget impact: Estimated < 3% at 500 concurrent sessions (signature/claim checks + bookkeeping).
 - Load test requirement: YES – run focused scenario: 500 concurrent sign‑ins followed by sustained renewal cycle to validate SC-004 & SC-006.
 
