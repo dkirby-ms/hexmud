@@ -5,8 +5,19 @@ import { PROTOCOL_VERSION } from '@hexmud/protocol';
 
 const validateAccessTokenMock = vi.fn();
 
+class MockAccessTokenValidationError extends Error {
+  reason: string;
+
+  constructor(reason: string, message?: string) {
+    super(message);
+    this.name = 'AccessTokenValidationError';
+    this.reason = reason;
+  }
+}
+
 vi.mock('../../src/auth/validateToken.js', () => ({
-  validateAccessToken: validateAccessTokenMock
+  validateAccessToken: validateAccessTokenMock,
+  AccessTokenValidationError: MockAccessTokenValidationError
 }));
 
 describe('join authentication guard', () => {

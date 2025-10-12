@@ -12,10 +12,18 @@ import { isMsalConfigured, msalScopes } from '../services/auth/msalConfig.js';
 
 export type AuthStatus = 'disabled' | 'loading' | 'authenticated' | 'unauthenticated' | 'error';
 
+export type AuthErrorCode =
+  | 'user_cancelled'
+  | 'interaction_required'
+  | 'popup_blocked'
+  | 'authentication_disabled'
+  | 'general';
+
 export interface AuthActionResult {
   success: boolean;
   accessToken?: string | null;
   error?: string;
+  errorCode?: AuthErrorCode;
 }
 
 export interface UseAuthResult {
@@ -23,6 +31,7 @@ export interface UseAuthResult {
   account: AccountInfo | null;
   accessToken: string | null;
   error?: string;
+  errorCode?: AuthErrorCode | null;
   signIn: () => Promise<AuthActionResult>;
   signInRedirect: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -35,12 +44,14 @@ interface AuthState {
   account: AccountInfo | null;
   accessToken: string | null;
   error?: string;
+  errorCode?: AuthErrorCode | null;
 }
 
 const initialState: AuthState = {
   status: isMsalConfigured() ? 'loading' : 'disabled',
   account: null,
-  accessToken: null
+  accessToken: null,
+  errorCode: null
 };
 
 const getActiveAccount = (instance: PublicClientApplication): AccountInfo | null => {
@@ -61,6 +72,21 @@ const acquireToken = async (
     scopes: msalScopes.length > 0 ? [...msalScopes] : ['openid']
   });
 
+const resolveErrorCode = (error: unknown): AuthErrorCode => {
+  if (error instanceof InteractionRequiredAuthError) {
+    const interactionError = error as InteractionRequiredAuthError & { errorCode?: string };
+    switch (interactionError.errorCode) {
+      case 'user_cancelled':
+        return 'user_cancelled';
+      case 'popup_window_error':
+        return 'popup_blocked';
+      default:
+        return 'interaction_required';
+    }
+  }
+  return 'general';
+};
+
 export const useAuth = (): UseAuthResult => {
   const [state, setState] = useState<AuthState>(initialState);
   const instanceRef = useRef<PublicClientApplication | null>(null);
@@ -73,7 +99,12 @@ export const useAuth = (): UseAuthResult => {
     instanceRef.current = instance;
 
     if (!instance) {
-      setState({ status: 'disabled', account: null, accessToken: null });
+      setState({
+        status: 'disabled',
+        account: null,
+        accessToken: null,
+        errorCode: 'authentication_disabled'
+      });
       return () => {
         mountedRef.current = false;
       };
@@ -82,12 +113,24 @@ export const useAuth = (): UseAuthResult => {
     const initialize = async () => {
       try {
         await instance.initialize();
-        await instance.handleRedirectPromise();
+        const redirectResult = await instance.handleRedirectPromise();
+        if (redirectResult?.account) {
+          instance.setActiveAccount(redirectResult.account);
+          console.info('[auth] sign-in success', {
+            method: 'redirect',
+            username: redirectResult.account.username
+          });
+        }
 
         const account = getActiveAccount(instance);
         if (!account) {
           if (mountedRef.current) {
-            setState({ status: 'unauthenticated', account: null, accessToken: null });
+            setState({
+              status: 'unauthenticated',
+              account: null,
+              accessToken: null,
+              errorCode: null
+            });
           }
           return;
         }
@@ -99,7 +142,8 @@ export const useAuth = (): UseAuthResult => {
             status: 'authenticated',
             account,
             accessToken: result.accessToken ?? null,
-            error: undefined
+            error: undefined,
+            errorCode: null
           });
         }
       } catch (error) {
@@ -107,11 +151,24 @@ export const useAuth = (): UseAuthResult => {
           return;
         }
         if (error instanceof InteractionRequiredAuthError) {
-          setState({ status: 'unauthenticated', account: null, accessToken: null });
+          const errorCode = resolveErrorCode(error);
+          setState({
+            status: 'unauthenticated',
+            account: null,
+            accessToken: null,
+            error: errorCode === 'user_cancelled' ? undefined : error.message,
+            errorCode
+          });
           return;
         }
         const message = error instanceof Error ? error.message : 'Authentication failed';
-        setState({ status: 'error', account: null, accessToken: null, error: message });
+        setState({
+          status: 'error',
+          account: null,
+          accessToken: null,
+          error: message,
+          errorCode: resolveErrorCode(error)
+        });
       }
     };
 
@@ -135,7 +192,12 @@ export const useAuth = (): UseAuthResult => {
 
     const account = getActiveAccount(instance);
     if (!account) {
-      setState({ status: 'unauthenticated', account: null, accessToken: null });
+      setState({
+        status: 'unauthenticated',
+        account: null,
+        accessToken: null,
+        errorCode: null
+      });
       return null;
     }
 
@@ -146,20 +208,32 @@ export const useAuth = (): UseAuthResult => {
           status: 'authenticated',
           account,
           accessToken: result.accessToken ?? null,
-          error: undefined
+          error: undefined,
+          errorCode: null
         });
       }
       return result.accessToken ?? null;
     } catch (error) {
       if (error instanceof InteractionRequiredAuthError) {
         if (mountedRef.current) {
-          setState({ status: 'unauthenticated', account: null, accessToken: null });
+          setState({
+            status: 'unauthenticated',
+            account: null,
+            accessToken: null,
+            errorCode: resolveErrorCode(error)
+          });
         }
         throw error;
       }
       const message = error instanceof Error ? error.message : 'Authentication failed';
       if (mountedRef.current) {
-        setState({ status: 'error', account: null, accessToken: null, error: message });
+        setState({
+          status: 'error',
+          account: null,
+          accessToken: null,
+          error: message,
+          errorCode: resolveErrorCode(error)
+        });
       }
       throw error instanceof Error ? error : new Error(message);
     }
@@ -168,11 +242,17 @@ export const useAuth = (): UseAuthResult => {
   const signIn = useCallback(async (): Promise<AuthActionResult> => {
     const instance = instanceRef.current;
     if (!instance) {
-      return { success: false, error: 'Authentication is disabled' };
+      return {
+        success: false,
+        error: 'Authentication is disabled',
+        errorCode: 'authentication_disabled'
+      };
     }
 
     try {
-  const result = await instance.loginPopup({ scopes: msalScopes.length > 0 ? [...msalScopes] : ['openid'] });
+      const result = await instance.loginPopup({
+        scopes: msalScopes.length > 0 ? [...msalScopes] : ['openid']
+      });
       const account = result.account ?? getActiveAccount(instance);
       if (!account) {
         throw new Error('Login did not return an account');
@@ -184,16 +264,33 @@ export const useAuth = (): UseAuthResult => {
           status: 'authenticated',
           account,
           accessToken: accessToken ?? null,
-          error: undefined
+          error: undefined,
+          errorCode: null
         });
       }
+      console.info('[auth] sign-in success', {
+        method: 'popup',
+        username: account.username
+      });
       return { success: true, accessToken: accessToken ?? null };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Authentication failed';
+      const errorCode = resolveErrorCode(error);
       if (mountedRef.current) {
-        setState({ status: 'unauthenticated', account: null, accessToken: null, error: message });
+        setState({
+          status: 'unauthenticated',
+          account: null,
+          accessToken: null,
+          error: errorCode === 'user_cancelled' ? undefined : message,
+          errorCode
+        });
       }
-      return { success: false, error: message };
+      console.warn('[auth] sign-in failure', {
+        method: 'popup',
+        reason: errorCode,
+        message
+      });
+      return { success: false, error: message, errorCode };
     }
   }, []);
 
@@ -207,12 +304,25 @@ export const useAuth = (): UseAuthResult => {
       return;
     }
     try {
+      console.info('[auth] sign-in redirect initiated', { method: 'redirect' });
+      // Decision D1: redirect flow is primary; popup is retained as fallback for tests or constrained contexts.
       await instance.loginRedirect({ scopes: msalScopes.length > 0 ? [...msalScopes] : ['openid'] });
       // Redirect will leave page; post-redirect flow handled in initialization effect via handleRedirectPromise.
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Redirect sign-in failed';
+      const errorCode = resolveErrorCode(error);
+      console.warn('[auth] sign-in redirect failure', {
+        reason: errorCode,
+        message
+      });
       if (mountedRef.current) {
-        setState({ status: 'unauthenticated', account: null, accessToken: null, error: message });
+        setState({
+          status: 'unauthenticated',
+          account: null,
+          accessToken: null,
+          error: errorCode === 'user_cancelled' ? undefined : message,
+          errorCode
+        });
       }
     }
   }, [state.status]);
@@ -220,7 +330,12 @@ export const useAuth = (): UseAuthResult => {
   const signOut = useCallback(async () => {
     const instance = instanceRef.current;
     if (!instance) {
-      setState({ status: 'disabled', account: null, accessToken: null });
+      setState({
+        status: 'disabled',
+        account: null,
+        accessToken: null,
+        errorCode: 'authentication_disabled'
+      });
       return;
     }
 
@@ -232,7 +347,13 @@ export const useAuth = (): UseAuthResult => {
       await instance.logoutPopup();
     } finally {
       if (mountedRef.current) {
-        setState({ status: 'unauthenticated', account: null, accessToken: null });
+        console.info('[auth] sign-out success');
+        setState({
+          status: 'unauthenticated',
+          account: null,
+          accessToken: null,
+          errorCode: null
+        });
       }
     }
   }, []);
@@ -267,6 +388,7 @@ export const useAuth = (): UseAuthResult => {
       account: state.account,
       accessToken: state.accessToken,
       error: state.error,
+      errorCode: state.errorCode ?? null,
       signIn,
       signInRedirect,
       signOut,

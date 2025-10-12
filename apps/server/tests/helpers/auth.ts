@@ -1,3 +1,8 @@
+/**
+ * Provides a mock identity provider for integration tests.
+ * Tokens default to a one-hour lifetime; callers can shorten expiry to exercise
+ * the <5 minute renewal window enforced by the client feature plan (D2).
+ */
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -59,19 +64,21 @@ const createMockIdentityProvider = async (): Promise<MockIdentityProvider> => {
 
   const issueToken = async (claims: Partial<AccessTokenClaims> = {}): Promise<string> => {
     const defaultOid = claims.oid ?? randomUUID();
+    const { nbf, exp, ...restClaims } = claims;
 
     return new SignJWT({
-      preferred_username: claims.preferred_username ?? 'player@example.com',
-      name: claims.name ?? 'Test Player',
+      preferred_username: restClaims.preferred_username ?? 'player@example.com',
+      name: restClaims.name ?? 'Test Player',
       oid: defaultOid,
-      ...claims
+      ...restClaims
     })
       .setProtectedHeader({ alg: 'RS256', kid })
       .setIssuer(issuer)
       .setAudience(audience)
       .setSubject(claims.sub ?? defaultOid)
       .setIssuedAt()
-      .setExpirationTime('1h')
+      .setNotBefore(nbf ?? '0s')
+      .setExpirationTime(exp ?? '1h')
       .sign(privateKey);
   };
 

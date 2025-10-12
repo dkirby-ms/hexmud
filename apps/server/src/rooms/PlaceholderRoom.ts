@@ -116,6 +116,7 @@ export class PlaceholderRoom extends Room {
         sessions.upsertIdentity({
           playerId: joinContext.playerId,
           displayName: joinContext.claims.name ?? joinContext.claims.preferred_username,
+          roles: joinContext.roles,
           authClaims: joinContext.claims,
           sessionPolicy: {
             allowConcurrent: true

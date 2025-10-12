@@ -112,7 +112,8 @@ export const useGameConnection = (): GameConnectionState => {
       let accessToken: string | undefined;
       if (authStatus === 'authenticated') {
         try {
-          const token = authAccessToken ?? (await ensureAuthToken());
+          const ensuredToken = await ensureAuthToken();
+          const token = ensuredToken ?? authAccessToken;
           if (!token) {
             throw new Error('Authentication required');
           }

@@ -2,12 +2,21 @@
 import { type ErrorCode } from '@hexmud/protocol';
 import type { Client } from 'colyseus';
 
-import { type AccessTokenClaims, validateAccessToken } from '../auth/validateToken.js';
+import {
+  AccessTokenValidationError,
+  type AccessTokenClaims,
+  type AccessTokenValidationReason,
+  validateAccessToken
+} from '../auth/validateToken.js';
 import { env } from '../config/env.js';
 import type { AuthLogEvent } from '../logging/events.js';
 import { logger } from '../logging/logger.js';
+import {
+  incrementTokenValidationFailure,
+  incrementTokenValidationTotal
+} from '../metrics/adapter.js';
 
-import { sendErrorEnvelope } from './error.js';
+import { resolveAuthErrorMessage, type AuthRejectionReason, sendErrorEnvelope } from './error.js';
 
 const logAuthEvent = (event: AuthLogEvent, level: 'info' | 'warn' = 'info') => {
   const { type, ...context } = event;
@@ -24,6 +33,7 @@ export interface JoinContext {
   playerId: string;
   protocolVersion: number;
   claims?: AccessTokenClaims;
+  roles: string[];
 }
 
 export class JoinRejectedError extends Error {
@@ -49,6 +59,63 @@ const authSettings = (() => {
     jwksUri: jwksUri ?? undefined
   } as const;
 })();
+
+const DEFAULT_ROLES = Object.freeze(['player'] as const);
+
+const deriveRolesFromClaims = (claims?: AccessTokenClaims): string[] => {
+  if (!claims) {
+    return [...DEFAULT_ROLES];
+  }
+
+  const roles = new Set<string>(DEFAULT_ROLES);
+
+  if (claims.moderator === true) {
+    roles.add('moderator');
+  }
+
+  const rawRoles = (claims as { roles?: unknown }).roles;
+
+  if (Array.isArray(rawRoles)) {
+    for (const role of rawRoles) {
+      if (typeof role === 'string') {
+        const normalized = role.trim().toLowerCase();
+        if (normalized === 'moderator') {
+          roles.add('moderator');
+        } else if (normalized.length > 0) {
+          roles.add(normalized);
+        }
+      }
+    }
+  } else if (typeof rawRoles === 'string') {
+    const normalized = rawRoles.trim().toLowerCase();
+    if (normalized === 'moderator') {
+      roles.add('moderator');
+    } else if (normalized.length > 0) {
+      roles.add(normalized);
+    }
+  }
+
+  return Array.from(roles);
+};
+
+const mapValidationReasonToRejection = (
+  reason: AccessTokenValidationReason
+): AuthRejectionReason => {
+  switch (reason) {
+    case 'expired':
+      return 'token_expired';
+    case 'nbfSkew':
+      return 'token_not_yet_valid';
+    case 'claimMissing':
+      return 'token_claim_invalid';
+    case 'revoked':
+      return 'token_revoked';
+    case 'signature':
+    case 'other':
+    default:
+      return 'token_invalid';
+  }
+};
 
 export const processJoinRequest = async ({
   client,
@@ -79,33 +146,41 @@ export const processJoinRequest = async ({
     const token = options.accessToken?.trim();
     if (!token) {
       logAuthEvent({
-        type: 'auth.token.missing',
-        sessionId: client.sessionId
-      });
-      reject('AUTH_REQUIRED', 'AUTH_REQUIRED: access token is required to join');
+        type: 'auth.token.validation.failure',
+        sessionId: client.sessionId,
+        reason: 'missing_token'
+      }, 'warn');
+      incrementTokenValidationFailure('other', { stage: 'join' });
+      reject('AUTH_REQUIRED', resolveAuthErrorMessage('missing_token'));
     }
 
     try {
+      incrementTokenValidationTotal({ stage: 'join' });
       claims = await validateAccessToken(token!, {
         jwksUri: authSettings.jwksUri!,
         audience: authSettings.audience!,
         issuer: authSettings.issuer!
       });
-      logAuthEvent({
-        type: 'auth.token.validated',
-        playerId: claims.oid ?? claims.sub ?? client.sessionId,
-        sessionId: client.sessionId,
-        claims
-      });
     } catch (error) {
-      const reason =
-        error instanceof Error ? error.message : 'failed to validate access token';
+        let failureReason: AuthRejectionReason = 'token_invalid';
+        let metricsReason: AccessTokenValidationReason = 'other';
+        let logReason: string = 'other';
+
+      if (error instanceof AccessTokenValidationError) {
+        metricsReason = error.reason;
+        failureReason = mapValidationReasonToRejection(error.reason);
+        logReason = error.reason;
+      }
+
+      const message = resolveAuthErrorMessage(failureReason);
+
+      incrementTokenValidationFailure(metricsReason, { stage: 'join' });
       logAuthEvent({
-        type: 'auth.token.invalid',
+        type: 'auth.token.validation.failure',
         sessionId: client.sessionId,
-        reason
+        reason: logReason
       }, 'warn');
-      reject('AUTH_REQUIRED', `AUTH_REQUIRED: ${reason}`);
+      reject('AUTH_REQUIRED', message);
     }
   }
 
@@ -117,15 +192,18 @@ export const processJoinRequest = async ({
 
   if (claims) {
     logAuthEvent({
-      type: 'auth.identity.persisted',
-      playerId,
-      claims
+      type: 'auth.signin.success',
+      sessionId: client.sessionId,
+      playerId
     });
   }
+
+  const roles = deriveRolesFromClaims(claims);
 
   return {
     playerId,
     protocolVersion: expectedProtocolVersion,
-    claims
+    claims,
+    roles
   };
 };

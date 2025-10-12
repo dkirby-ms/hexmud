@@ -5,6 +5,7 @@ export type ConnectionState = 'joining' | 'active' | 'closing';
 export interface PlayerIdentity {
   playerId: string;
   displayName?: string;
+  roles: string[];
   authClaims: Record<string, unknown>;
   sessionPolicy: {
     allowConcurrent: boolean;

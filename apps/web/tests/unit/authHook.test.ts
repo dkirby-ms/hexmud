@@ -12,21 +12,25 @@ const account: AccountInfo = {
   name: 'Player Example'
 };
 
-const initialize = vi.fn(async () => {});
-const handleRedirectPromise = vi.fn(async () => null);
-const getActiveAccount = vi.fn(() => null);
-const getAllAccounts = vi.fn(() => [account]);
-const setActiveAccount = vi.fn();
-const acquireTokenSilent = vi.fn(async () => ({
+const initialize = vi.fn<() => Promise<void>>(async () => {});
+const handleRedirectPromise = vi.fn<() => Promise<AuthenticationResult | null>>(async () => null);
+const getActiveAccount = vi.fn<() => AccountInfo | null>(() => null);
+const getAllAccounts = vi.fn<() => AccountInfo[]>(() => [account]);
+const setActiveAccount = vi.fn<(nextAccount: AccountInfo) => void>();
+const acquireTokenSilent = vi.fn<() => Promise<AuthenticationResult>>(async () => ({
   accessToken: 'token-silent'
 } as AuthenticationResult));
-const loginPopup = vi.fn(async () => ({
+const loginPopup = vi.fn<() => Promise<AuthenticationResult>>(async () => ({
   account,
   accessToken: 'token-login'
-}));
-const logoutPopup = vi.fn(async () => {});
+} as AuthenticationResult));
+const logoutPopup = vi.fn<() => Promise<void>>(async () => {});
 
-class MockInteractionRequiredAuthError extends Error {}
+class MockInteractionRequiredAuthError extends Error {
+  constructor(message: string, public readonly errorCode: string = 'interaction_required') {
+    super(message);
+  }
+}
 
 vi.mock('@azure/msal-browser', () => ({
   PublicClientApplication: vi.fn(() => ({
@@ -81,21 +85,57 @@ describe('useAuth', () => {
   });
 
   it('prompts login when no cached account exists', async () => {
-  getAllAccounts.mockImplementation(() => []);
+      getAllAccounts.mockImplementation(() => []);
 
-    const { useAuth } = await import('../../src/hooks/useAuth.js');
-    const { result } = renderHook(() => useAuth());
+      const { useAuth } = await import('../../src/hooks/useAuth.js');
+      const { result } = renderHook(() => useAuth());
 
-    await waitFor(() => expect(result.current.status).toBe('unauthenticated'));
+      await waitFor(() => expect(result.current.status).toBe('unauthenticated'));
 
-    let token: string | null = null;
-    await act(async () => {
-      token = await result.current.ensureAccessToken();
+      let token: string | null = null;
+      await act(async () => {
+        token = await result.current.ensureAccessToken();
+      });
+
+      expect(loginPopup).toHaveBeenCalledTimes(1);
+      expect(token).toBe('token-login');
+      expect(result.current.status).toBe('authenticated');
+      expect(result.current.accessToken).toBe('token-login');
     });
 
-    expect(loginPopup).toHaveBeenCalledTimes(1);
-    expect(token).toBe('token-login');
-    expect(result.current.status).toBe('authenticated');
-    expect(result.current.accessToken).toBe('token-login');
-  });
+    it('authenticates when handleRedirectPromise returns a redirect result', async () => {
+      handleRedirectPromise.mockImplementation(async () => {
+        getActiveAccount.mockImplementation(() => account);
+        return {
+          account,
+          accessToken: 'token-redirect'
+        } as AuthenticationResult;
+      });
+
+      const { useAuth } = await import('../../src/hooks/useAuth.js');
+      const { result } = renderHook(() => useAuth());
+
+      await waitFor(() => expect(result.current.status).toBe('authenticated'));
+
+      expect(handleRedirectPromise).toHaveBeenCalledTimes(1);
+      expect(setActiveAccount).toHaveBeenCalledWith(account);
+    expect(acquireTokenSilent).toHaveBeenCalledTimes(1);
+    expect(result.current.accessToken).toBe('token-silent');
+    expect(result.current.errorCode).toBeNull();
+    });
+
+    it('remains unauthenticated when redirect flow is cancelled by the user', async () => {
+      handleRedirectPromise.mockImplementation(async () => {
+        throw new MockInteractionRequiredAuthError('User cancelled', 'user_cancelled');
+      });
+
+      const { useAuth } = await import('../../src/hooks/useAuth.js');
+      const { result } = renderHook(() => useAuth());
+
+      await waitFor(() => expect(result.current.status).toBe('unauthenticated'));
+
+      expect(result.current.error).toBeUndefined();
+      expect(result.current.errorCode).toBe('user_cancelled');
+      expect(acquireTokenSilent).not.toHaveBeenCalled();
+    });
 });

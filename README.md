@@ -35,6 +35,15 @@ Press `Ctrl+C` once to gracefully shut down both processes. The server will disp
 
 See [`specs/001-monorepo-framework-for/quickstart.md`](specs/001-monorepo-framework-for/quickstart.md) for detailed onboarding, troubleshooting tips, and future authentication setup instructions.
 
+## Authentication Setup
+
+Authentication is optional for local prototyping but required to exercise the new auth-enabled join flow:
+
+- Copy `.env.example` to `.env` in both `apps/web` and `apps/server`, then follow the guidance in [`docs/auth-config.md`](docs/auth-config.md).
+- Review the feature-specific quickstart at [`specs/002-wire-up-authentication/quickstart.md`](specs/002-wire-up-authentication/quickstart.md) for redirect flow behaviour, renewal expectations, and troubleshooting steps.
+- When the `MSAL_*` and `VITE_MSAL_*` variables are populated, the web client will automatically prompt for sign-in and attach the validated token to server join requests.
+- The UI exposes a **Sign in (redirect)** button aligned with Decision D1 and a **Use popup fallback** helper when running tests or diagnosing redirect blockers. Cancellation leaves the session unauthenticated without noisy errors; retry when ready.
+
 ## Repository Layout
 
 ```
@@ -62,6 +71,7 @@ config/     # Shared configuration (eslint, tsconfig, vitest)
 - Feature spec: [`specs/001-monorepo-framework-for/spec.md`](specs/001-monorepo-framework-for/spec.md)
 - Implementation plan: [`specs/001-monorepo-framework-for/plan.md`](specs/001-monorepo-framework-for/plan.md)
 - Quickstart: [`specs/001-monorepo-framework-for/quickstart.md`](specs/001-monorepo-framework-for/quickstart.md)
+- Authentication configuration: [`docs/auth-config.md`](docs/auth-config.md)
 
 ## Protocol Versioning & Breaking Changes
 

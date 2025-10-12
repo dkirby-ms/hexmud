@@ -22,24 +22,24 @@ Tests were explicitly described in spec acceptance scenarios and quickstart; inc
 ## Phase 1: Setup (Shared Infrastructure)
 Purpose: Ensure environment + config ready; no code logic changes yet beyond config scaffolding.
 
-- [ ] T001 Verify env var documentation reflects required auth vars (`specs/002-wire-up-authentication/quickstart.md`) and cross-link from root `README.md` (add Auth section).
-- [ ] T002 [P] Add sample `.env.example` entries for web (`VITE_MSAL_CLIENT_ID`, `VITE_MSAL_AUTHORITY`, `VITE_MSAL_REDIRECT_URI`, `VITE_MSAL_SCOPES`) in `apps/web/.env.example`.
-- [ ] T003 [P] Add sample `.env.example` entries for server (`MSAL_CLIENT_ID`, `MSAL_AUTHORITY`, `MSAL_JWKS_URI`) in `apps/server/.env.example`.
-- [ ] T004 Create developer doc snippet `docs/auth-config.md` summarizing configuration + renewal strategy referencing Decisions D1–D7.
-- [ ] T005 [P] Confirm existing test helper `apps/server/tests/helpers/auth.ts` covers JWKS issuance; extend docstring with renewal note.
+- [X] T001 Verify env var documentation reflects required auth vars (`specs/002-wire-up-authentication/quickstart.md`) and cross-link from root `README.md` (add Auth section).
+- [X] T002 [P] Add sample `.env.example` entries for web (`VITE_MSAL_CLIENT_ID`, `VITE_MSAL_AUTHORITY`, `VITE_MSAL_REDIRECT_URI`, `VITE_MSAL_SCOPES`) in `apps/web/.env.example`.
+- [X] T003 [P] Add sample `.env.example` entries for server (`MSAL_CLIENT_ID`, `MSAL_AUTHORITY`, `MSAL_JWKS_URI`) in `apps/server/.env.example`.
+- [X] T004 Create developer doc snippet `docs/auth-config.md` summarizing configuration + renewal strategy referencing Decisions D1–D7.
+- [X] T005 [P] Confirm existing test helper `apps/server/tests/helpers/auth.ts` covers JWKS issuance; extend docstring with renewal note.
 
 **Checkpoint**: Environment + documentation ready.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 Purpose: Core cross-story primitives needed before implementing story logic beyond current baseline.
 
-- [ ] T006 Add server auth settings guard: extend `apps/server/src/config/env.ts` (if missing) to surface `MSAL_JWKS_URI` (skip if present) + typed interface.
-- [ ] T007 [P] Add constant for acceptable clock skew (120s) in `apps/server/src/auth/validateToken.ts` or new `constants.ts`; integrate into validation error messaging (claim nbf handling placeholder if needed).
-- [ ] T008 [P] Add structured log event type definitions update in `apps/server/src/logging/events.ts` for canonical set (spec FR-010): `auth.signin.success`, `auth.signin.failure`, `auth.token.validation.failure`, `auth.signout`, `auth.renewal.success`, `auth.renewal.failure` (include reason + `authCorrId`). (Do NOT add extra events without spec update.)
-- [ ] T009 Implement initial metrics scaffolding in `apps/server/src/metrics/adapter.ts` (or new `authMetrics.ts`) for: active sessions gauge, token validations total counter, token validation failures (reason), signin success/failure counters (placeholders), renewal success/failure counters, signin duration histogram, renewal latency histogram. (Full wiring in T061/T062.)
-- [ ] T010 [P] Update protocol join envelope documentation (`packages/protocol/src/messages/envelope.ts` or `protocol-messages.md`) to clarify optional `accessToken` usage when auth enabled (no breaking change; do not increment protocol version since field already present logically— verify; if absent, plan minor addition and bump only if required). Add TODO note referencing PROTOCOL_VERSION bump gating rule.
-- [ ] T011 Add minimal invalid token attempt counter increment (no enforcement) in `apps/server/src/ratelimit/heartbeat.ts` (or security module) to support future rate limiting; expose metric only (Principle 5 alignment).
-- [ ] T012 [P] Ensure integration test scaffold for auth already exists; if not, create `apps/server/tests/integration/authJoin.test.ts` baseline (verify existing; adjust to cover negative missing token) referencing FR-004/FR-005.
+- [X] T006 Add server auth settings guard: extend `apps/server/src/config/env.ts` (if missing) to surface `MSAL_JWKS_URI` (skip if present) + typed interface.
+- [X] T007 [P] Add constant for acceptable clock skew (120s) in `apps/server/src/auth/validateToken.ts` or new `constants.ts`; integrate into validation error messaging (claim nbf handling placeholder if needed).
+- [X] T008 [P] Add structured log event type definitions update in `apps/server/src/logging/events.ts` for canonical set (spec FR-010): `auth.signin.success`, `auth.signin.failure`, `auth.token.validation.failure`, `auth.signout`, `auth.renewal.success`, `auth.renewal.failure` (include reason + `authCorrId`). (Do NOT add extra events without spec update.)
+- [X] T009 Implement initial metrics scaffolding in `apps/server/src/metrics/adapter.ts` (or new `authMetrics.ts`) for: active sessions gauge, token validations total counter, token validation failures (reason), signin success/failure counters (placeholders), renewal success/failure counters, signin duration histogram, renewal latency histogram. (Full wiring in T061/T062.)
+- [X] T010 [P] Update protocol join envelope documentation (`packages/protocol/src/messages/envelope.ts` or `protocol-messages.md`) to clarify optional `accessToken` usage when auth enabled (no breaking change; do not increment protocol version since field already present logically— verify; if absent, plan minor addition and bump only if required). Add TODO note referencing PROTOCOL_VERSION bump gating rule.
+- [X] T011 Add minimal invalid token attempt counter increment (no enforcement) in `apps/server/src/ratelimit/heartbeat.ts` (or security module) to support future rate limiting; expose metric only (Principle 5 alignment).
+- [X] T012 [P] Ensure integration test scaffold for auth already exists; if not, create `apps/server/tests/integration/authJoin.test.ts` baseline (verify existing; adjust to cover negative missing token) referencing FR-004/FR-005.
 
 **Checkpoint**: Foundation complete; user story work may proceed.
 
@@ -48,18 +48,18 @@ Goal: User can initiate sign-in (redirect or popup fallback), obtain a valid tok
 Independent Test: Fresh session -> click Sign In -> redirected -> token acquired -> `useAuth` state == authenticated; backend accepts token on join attempt (happy path) & cancellation path leaves unauthenticated state.
 
 ### Tests (Write First)
-- [ ] T013 [P] [US1] Extend `apps/web/tests/unit/authHook.test.ts` to add redirect flow success test simulating `handleRedirectPromise` token result.
-- [ ] T014 [P] [US1] Add test for canceled sign-in (simulate thrown InteractionRequired / user cancel) verifying state returns unauthenticated with non-intrusive error.
-- [ ] T015 [P] [US1] Add test covering slight future `nbf` (simulate claims with future nbf within skew) ensuring accept path on server (utilize test token issuance override) in `apps/server/tests/integration/authJoin.test.ts`.
+- [X] T013 [P] [US1] Extend `apps/web/tests/unit/authHook.test.ts` to add redirect flow success test simulating `handleRedirectPromise` token result.
+- [X] T014 [P] [US1] Add test for canceled sign-in (simulate thrown InteractionRequired / user cancel) verifying state returns unauthenticated with non-intrusive error.
+- [X] T015 [P] [US1] Add test covering slight future `nbf` (simulate claims with future nbf within skew) ensuring accept path on server (utilize test token issuance override) in `apps/server/tests/integration/authJoin.test.ts`.
 
 ### Implementation
-- [ ] T016 [P] [US1] Add redirect-based sign-in trigger UI control (if missing) in `apps/web/src/components/WorldPlaceholder.tsx` (show Sign In / Sign Out states).
-- [ ] T017 [US1] Refactor `useAuth.ts` to expose explicit `signInRedirect` (already present) ensure fallback path documented + add inline comments referencing D1.
-- [ ] T018 [P] [US1] Enhance `useAuth.ts` to surface specific error codes for cancellation vs generic errors (map to InteractionRequired / user cancel) for UI message granularity.
-- [ ] T019 [US1] Add authenticated state indicator (e.g., display account username) in `WorldPlaceholder.tsx`.
-- [ ] T020 [P] [US1] Add basic structured client log (console.info) when sign-in succeeds or fails (placeholder; future telemetry integration) in `useAuth.ts`.
-- [ ] T021 [US1] Update quickstart `specs/002-wire-up-authentication/quickstart.md` with redirect vs popup explanation and cancellation scenario.
-- [ ] T022 [US1] Update README Auth section referencing how to trigger redirect sign-in (link to quickstart doc).
+- [X] T016 [P] [US1] Add redirect-based sign-in trigger UI control (if missing) in `apps/web/src/components/WorldPlaceholder.tsx` (show Sign In / Sign Out states).
+- [X] T017 [US1] Refactor `useAuth.ts` to expose explicit `signInRedirect` (already present) ensure fallback path documented + add inline comments referencing D1.
+- [X] T018 [P] [US1] Enhance `useAuth.ts` to surface specific error codes for cancellation vs generic errors (map to InteractionRequired / user cancel) for UI message granularity.
+- [X] T019 [US1] Add authenticated state indicator (e.g., display account username) in `WorldPlaceholder.tsx`.
+- [X] T020 [P] [US1] Add basic structured client log (console.info) when sign-in succeeds or fails (placeholder; future telemetry integration) in `useAuth.ts`.
+- [X] T021 [US1] Update quickstart `specs/002-wire-up-authentication/quickstart.md` with redirect vs popup explanation and cancellation scenario.
+- [X] T022 [US1] Update README Auth section referencing how to trigger redirect sign-in (link to quickstart doc).
 
 **Checkpoint**: US1 complete; MVP deliverable (sign-in + token retrieval + basic acceptance by server).
 
@@ -68,19 +68,19 @@ Goal: Token attached on join; server validates token & creates session with iden
 Independent Test: Attempt join with valid token => success & session record with playerId; attempt join without token => unauthorized; invalid signature => unauthorized + log event.
 
 ### Tests (Write First)
-- [ ] T023 [P] [US2] Add integration test for missing token rejection (if not already) verifying error code & no session record in `apps/server/tests/integration/authJoin.test.ts`.
-- [ ] T024 [P] [US2] Add integration test for invalid signature token (mutate last char) expecting `auth.token.invalid` log & unauthorized.
-- [ ] T025 [P] [US2] Add unit test for `validateToken` clock skew acceptance & rejection beyond skew (create new `apps/server/tests/unit/validateTokenSkew.test.ts`).
-- [ ] T026 [P] [US2] Add test verifying roles extraction (moderator claim -> roles includes 'moderator') using issued token in integration test.
+- [X] T023 [P] [US2] Add integration test for missing token rejection (if not already) verifying error code & no session record in `apps/server/tests/integration/authJoin.test.ts`.
+- [X] T024 [P] [US2] Add integration test for invalid signature token (mutate last char) expecting `auth.token.invalid` log & unauthorized.
+- [X] T025 [P] [US2] Add unit test for `validateToken` clock skew acceptance & rejection beyond skew (create new `apps/server/tests/unit/validateTokenSkew.test.ts`).
+- [X] T026 [P] [US2] Add test verifying roles extraction (moderator claim -> roles includes 'moderator') using issued token in integration test.
 
 ### Implementation
-- [ ] T027 [US2] Extend `validateToken.ts` to enforce nbf skew logic (T007 constant) and produce descriptive error reasons (claimMissing|expired|signature|nbfSkew|revoked placeholder) mapped to FR-004.
-- [ ] T028 [P] [US2] Parse roles (moderator flag) from claims in `join.ts` (derive from a claim or placeholder mapping) store in session state structure (update `apps/server/src/state/sessions.ts`).
-- [ ] T029 [US2] Emit structured log events per FR-010 in success/failure paths inside `join.ts` (ensure standardized reason field).
-- [ ] T030 [P] [US2] Increment metrics counters / gauge updates at validation points (signin success not applicable server side; token validation success/failure; active sessions gauge) in metrics adapter (T009 scaffolding).
-- [ ] T031 [US2] Add unauthorized standardized error message constants in `apps/server/src/handlers/error.ts` (avoid leaking raw signature errors) referencing FR-005.
-- [ ] T032 [P] [US2] Update `apps/web/src/hooks/useGameConnection.ts` to automatically include latest `accessToken` when establishing connection/join message (if not yet present) (FR-003).
-- [ ] T033 [US2] Add doc note in `docs/auth-config.md` about role claim source and session binding.
+- [X] T027 [US2] Extend `validateToken.ts` to enforce nbf skew logic (T007 constant) and produce descriptive error reasons (claimMissing|expired|signature|nbfSkew|revoked placeholder) mapped to FR-004.
+- [X] T028 [P] [US2] Parse roles (moderator flag) from claims in `join.ts` (derive from a claim or placeholder mapping) store in session state structure (update `apps/server/src/state/sessions.ts`).
+- [X] T029 [US2] Emit structured log events per FR-010 in success/failure paths inside `join.ts` (ensure standardized reason field).
+- [X] T030 [P] [US2] Increment metrics counters / gauge updates at validation points (signin success not applicable server side; token validation success/failure; active sessions gauge) in metrics adapter (T009 scaffolding).
+- [X] T031 [US2] Add unauthorized standardized error message constants in `apps/server/src/handlers/error.ts` (avoid leaking raw signature errors) referencing FR-005.
+- [X] T032 [P] [US2] Update `apps/web/src/hooks/useGameConnection.ts` to automatically include latest `accessToken` when establishing connection/join message (if not yet present) (FR-003).
+- [X] T033 [US2] Add doc note in `docs/auth-config.md` about role claim source and session binding.
 
 **Checkpoint**: US2 complete; authenticated gameplay sessions established; session contains identity + roles; metrics/logging operational.
 

@@ -1,0 +1,54 @@
+# Authentication Configuration Guide
+
+This document summarizes the configuration required to enable external identity authentication for HexMUD. It draws from the feature plan decisions (D1–D7) in `specs/002-wire-up-authentication/plan.md`.
+
+## Overview
+
+- **Flow (D1):** The SPA uses the `@azure/msal-browser` redirect flow (`loginRedirect`) as the primary sign-in mechanism, with popup fallback for tests or constrained environments.
+- **Renewal (D2):** Tokens are refreshed silently when less than **5 minutes** of lifetime remain. Renewal retries every 60 seconds until success or expiry.
+- **Roles (D3):** Only the `moderator` role is surfaced from token claims; all other claims map to baseline "player" access.
+	- During join validation the server inspects both the boolean `moderator` claim and the `roles` array for the literal `moderator`. When detected, the `moderator` capability is recorded alongside the baseline `player` role in the in-memory session identity for downstream authorization checks.
+- **Tenant Policy (D4):** Any issuer that matches the configured authority is accepted. Future iterations may introduce allow/deny lists.
+- **Token Validation (D5):** The server validates signatures using `jose` and a remote JWKS endpoint with rotation support.
+- **Silent Acquisition (D6):** `acquireTokenSilent` drives both pre-join token acquisition and the renewal timer.
+- **PII Handling (D7):** No persistent storage of tokens or personally identifiable information (PII); logs only contain minimal identifiers.
+
+## Environment Variables
+
+### Web Client (`apps/web`)
+
+Define the following variables in `apps/web/.env` (see `.env.example` for a template):
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_MSAL_CLIENT_ID` | Azure Entra ID application (client) ID exposed to the SPA. |
+| `VITE_MSAL_AUTHORITY` | Authority URL, e.g. `https://login.microsoftonline.com/<tenantId>/`. |
+| `VITE_MSAL_REDIRECT_URI` | Redirect URI registered with the app. Defaults to the app origin when omitted. |
+| `VITE_MSAL_SCOPES` | Comma-separated scopes requested during sign-in; defaults to `openid,profile`. |
+
+### Server (`apps/server`)
+
+Define the following variables in `apps/server/.env` (see `.env.example` for a template):
+
+| Variable | Description |
+|----------|-------------|
+| `MSAL_CLIENT_ID` | Must match the SPA client ID. Used to validate the `aud` claim. |
+| `MSAL_AUTHORITY` | Same authority URL used by the client. Validated against the token `iss`. |
+| `MSAL_JWKS_URI` | JWKS endpoint exposed by the identity provider for signature validation. |
+
+## Renewal Strategy
+
+Silent renewal kicks in when a token has fewer than five minutes of validity remaining:
+
+1. The client schedules checks after each successful token acquisition.
+2. Once the remaining lifetime is under the threshold, `acquireTokenSilent` is invoked.
+3. Failures trigger exponential backoff retries (starting at 60 seconds) until a new token is obtained or the token expires.
+4. Renewal success/failure events are logged on the client and server for observability.
+
+Administrators should ensure clocks are synchronized to keep within the permitted ±120 second skew buffer enforced on the server.
+
+## Reference
+
+- Feature plan: [`specs/002-wire-up-authentication/plan.md`](../specs/002-wire-up-authentication/plan.md)
+- Quickstart instructions: [`specs/002-wire-up-authentication/quickstart.md`](../specs/002-wire-up-authentication/quickstart.md)
+- Renewal implementation details live in `apps/web/src/hooks/useAuth.ts` and server validation lives in `apps/server/src/auth/validateToken.ts`.
