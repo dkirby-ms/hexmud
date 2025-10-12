@@ -54,6 +54,11 @@ const initialState: AuthState = {
   errorCode: null
 };
 
+const RENEWAL_WINDOW_MS = 5 * 60_000;
+const RENEWAL_BASE_INTERVAL_MS = 60_000;
+const RENEWAL_MAX_BACKOFF_MS = 5 * 60_000;
+const SIGN_OUT_SENTINEL_KEY = 'hexmud:auth:signout';
+
 const getActiveAccount = (instance: PublicClientApplication): AccountInfo | null => {
   const active = instance.getActiveAccount();
   if (active) {
@@ -92,6 +97,155 @@ export const useAuth = (): UseAuthResult => {
   const instanceRef = useRef<PublicClientApplication | null>(null);
   const initializationRef = useRef<Promise<void> | null>(null);
   const mountedRef = useRef(true);
+  const renewalStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const renewalRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const renewalAttemptRef = useRef(0);
+  const scheduleRenewalRef = useRef<(expiresOn: Date | null | undefined) => void>(() => {});
+  const attemptRenewalRef = useRef<(attempt: number) => void>(() => {});
+
+  const clearRenewalTimers = useCallback(() => {
+    if (renewalStartTimerRef.current) {
+      clearTimeout(renewalStartTimerRef.current);
+      renewalStartTimerRef.current = null;
+    }
+    if (renewalRetryTimerRef.current) {
+      clearTimeout(renewalRetryTimerRef.current);
+      renewalRetryTimerRef.current = null;
+    }
+    renewalAttemptRef.current = 0;
+  }, []);
+
+  const broadcastSignOut = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    try {
+      window.localStorage.setItem(SIGN_OUT_SENTINEL_KEY, Date.now().toString());
+      window.localStorage.removeItem(SIGN_OUT_SENTINEL_KEY);
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('[auth] sign-out broadcast failed', error);
+      }
+    }
+  }, []);
+
+  const scheduleRenewal = useCallback(
+    (expiresOn: Date | null | undefined) => {
+      clearRenewalTimers();
+      if (!expiresOn) {
+        return;
+      }
+
+      const expiryMs = expiresOn.getTime();
+      const now = Date.now();
+      const windowStart = expiryMs - RENEWAL_WINDOW_MS;
+      const delay = windowStart > now ? windowStart - now : RENEWAL_BASE_INTERVAL_MS;
+
+      renewalStartTimerRef.current = setTimeout(() => {
+        renewalAttemptRef.current = 0;
+        attemptRenewalRef.current?.(1);
+      }, delay);
+    },
+    [clearRenewalTimers]
+  );
+
+  const attemptRenewal = useCallback(
+    async (attempt: number) => {
+      const instance = instanceRef.current;
+      if (!instance) {
+        return;
+      }
+
+      if (initializationRef.current) {
+        await initializationRef.current;
+      }
+
+      const account = getActiveAccount(instance);
+      if (!account) {
+        clearRenewalTimers();
+        return;
+      }
+
+      try {
+        const result = await acquireToken(instance, account);
+        console.info('[auth] renewal success', { attempt });
+        renewalAttemptRef.current = 0;
+        if (mountedRef.current) {
+          setState({
+            status: 'authenticated',
+            account,
+            accessToken: result.accessToken ?? null,
+            error: undefined,
+            errorCode: null
+          });
+        }
+        scheduleRenewalRef.current(result.expiresOn ?? null);
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : 'Unknown error';
+        renewalAttemptRef.current = attempt;
+        console.warn('[auth] renewal failure', {
+          attempt,
+          reason
+        });
+
+        const isInteractionRequired = error instanceof InteractionRequiredAuthError;
+        if (!isInteractionRequired) {
+          const delay = Math.min(
+            RENEWAL_MAX_BACKOFF_MS,
+            RENEWAL_BASE_INTERVAL_MS * Math.max(1, 2 ** (attempt - 1))
+          );
+          renewalRetryTimerRef.current = setTimeout(() => {
+            attemptRenewalRef.current?.(attempt + 1);
+          }, delay);
+        } else {
+          clearRenewalTimers();
+        }
+
+        if (isInteractionRequired && mountedRef.current) {
+          const errorCode = resolveErrorCode(error);
+          setState({
+            status: 'unauthenticated',
+            account: null,
+            accessToken: null,
+            error: errorCode === 'user_cancelled' ? undefined : reason,
+            errorCode
+          });
+        }
+      }
+    },
+    [clearRenewalTimers]
+  );
+
+  useEffect(() => {
+    scheduleRenewalRef.current = scheduleRenewal;
+    attemptRenewalRef.current = attemptRenewal;
+  }, [scheduleRenewal, attemptRenewal]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== SIGN_OUT_SENTINEL_KEY || !event.newValue) {
+        return;
+      }
+      clearRenewalTimers();
+      if (mountedRef.current) {
+        setState({
+          status: 'unauthenticated',
+          account: null,
+          accessToken: null,
+          errorCode: null
+        });
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [clearRenewalTimers]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -124,6 +278,7 @@ export const useAuth = (): UseAuthResult => {
 
         const account = getActiveAccount(instance);
         if (!account) {
+          clearRenewalTimers();
           if (mountedRef.current) {
             setState({
               status: 'unauthenticated',
@@ -137,6 +292,7 @@ export const useAuth = (): UseAuthResult => {
 
         instance.setActiveAccount(account);
         const result = await acquireToken(instance, account);
+        scheduleRenewal(result.expiresOn ?? null);
         if (mountedRef.current) {
           setState({
             status: 'authenticated',
@@ -147,6 +303,7 @@ export const useAuth = (): UseAuthResult => {
           });
         }
       } catch (error) {
+        clearRenewalTimers();
         if (!mountedRef.current) {
           return;
         }
@@ -177,8 +334,9 @@ export const useAuth = (): UseAuthResult => {
 
     return () => {
       mountedRef.current = false;
+      clearRenewalTimers();
     };
-  }, []);
+  }, [clearRenewalTimers, scheduleRenewal]);
 
   const refresh = useCallback(async (): Promise<string | null> => {
     const instance = instanceRef.current;
@@ -192,6 +350,7 @@ export const useAuth = (): UseAuthResult => {
 
     const account = getActiveAccount(instance);
     if (!account) {
+      clearRenewalTimers();
       setState({
         status: 'unauthenticated',
         account: null,
@@ -203,6 +362,7 @@ export const useAuth = (): UseAuthResult => {
 
     try {
       const result = await acquireToken(instance, account);
+      scheduleRenewal(result.expiresOn ?? null);
       if (mountedRef.current) {
         setState({
           status: 'authenticated',
@@ -215,6 +375,7 @@ export const useAuth = (): UseAuthResult => {
       return result.accessToken ?? null;
     } catch (error) {
       if (error instanceof InteractionRequiredAuthError) {
+        clearRenewalTimers();
         if (mountedRef.current) {
           setState({
             status: 'unauthenticated',
@@ -226,6 +387,7 @@ export const useAuth = (): UseAuthResult => {
         throw error;
       }
       const message = error instanceof Error ? error.message : 'Authentication failed';
+      clearRenewalTimers();
       if (mountedRef.current) {
         setState({
           status: 'error',
@@ -237,7 +399,7 @@ export const useAuth = (): UseAuthResult => {
       }
       throw error instanceof Error ? error : new Error(message);
     }
-  }, []);
+  }, [clearRenewalTimers, scheduleRenewal]);
 
   const signIn = useCallback(async (): Promise<AuthActionResult> => {
     const instance = instanceRef.current;
@@ -258,12 +420,15 @@ export const useAuth = (): UseAuthResult => {
         throw new Error('Login did not return an account');
       }
       instance.setActiveAccount(account);
-      const accessToken = result.accessToken || (await acquireToken(instance, account)).accessToken;
+      const needsSilentToken = !result.expiresOn;
+      const tokenResult = needsSilentToken ? await acquireToken(instance, account) : result;
+      const accessToken = result.accessToken ?? tokenResult.accessToken ?? null;
+      scheduleRenewal(tokenResult.expiresOn ?? result.expiresOn ?? null);
       if (mountedRef.current) {
         setState({
           status: 'authenticated',
           account,
-          accessToken: accessToken ?? null,
+          accessToken,
           error: undefined,
           errorCode: null
         });
@@ -274,6 +439,7 @@ export const useAuth = (): UseAuthResult => {
       });
       return { success: true, accessToken: accessToken ?? null };
     } catch (error) {
+      clearRenewalTimers();
       const message = error instanceof Error ? error.message : 'Authentication failed';
       const errorCode = resolveErrorCode(error);
       if (mountedRef.current) {
@@ -292,7 +458,7 @@ export const useAuth = (): UseAuthResult => {
       });
       return { success: false, error: message, errorCode };
     }
-  }, []);
+  }, [clearRenewalTimers, scheduleRenewal]);
 
   const signInRedirect = useCallback(async (): Promise<void> => {
     const instance = instanceRef.current;
@@ -330,6 +496,7 @@ export const useAuth = (): UseAuthResult => {
   const signOut = useCallback(async () => {
     const instance = instanceRef.current;
     if (!instance) {
+      clearRenewalTimers();
       setState({
         status: 'disabled',
         account: null,
@@ -346,6 +513,8 @@ export const useAuth = (): UseAuthResult => {
     try {
       await instance.logoutPopup();
     } finally {
+      clearRenewalTimers();
+      broadcastSignOut();
       if (mountedRef.current) {
         console.info('[auth] sign-out success');
         setState({
@@ -356,7 +525,7 @@ export const useAuth = (): UseAuthResult => {
         });
       }
     }
-  }, []);
+  }, [broadcastSignOut, clearRenewalTimers]);
 
   const ensureAccessToken = useCallback(async (): Promise<string | null> => {
     const instance = instanceRef.current;

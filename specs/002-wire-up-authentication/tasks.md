@@ -89,8 +89,8 @@ Goal: Silent renewal before expiry; sign-out clears state; failures trigger re-a
 Independent Test: Force near-expiry token -> silent renewal obtains new token without user action; sign-out clears token and subsequent join fails; renewal failure triggers prompt.
 
 ### Tests (Write First)
-- [ ] T034 [P] [US3] Add unit test simulating token nearing expiry triggering silent renewal path in `apps/web/tests/unit/authHook.test.ts` (mock `acquireTokenSilent` re-issue).
-- [ ] T035 [P] [US3] Add unit test for renewal failure then success on retry (exponential backoff mocked) verifying log events sequence.
+- [X] T034 [P] [US3] Add unit test simulating token nearing expiry triggering silent renewal path in `apps/web/tests/unit/authHook.test.ts` (mock `acquireTokenSilent` re-issue).
+- [X] T035 [P] [US3] Add unit test for renewal failure then success on retry (exponential backoff mocked) verifying log events sequence.
 - [ ] T036 [P] [US3] Add integration test: expired token used on join triggers unauthorized then client renews and retries successfully (new `apps/web/tests/contract/connectionRenewal.test.tsx` or integration analog).
 - [ ] T037 [P] [US3] Add test for sign-out: after calling signOut, join attempt fails until re-auth.
 

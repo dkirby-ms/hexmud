@@ -12,6 +12,8 @@ import { env } from '../config/env.js';
 import type { AuthLogEvent } from '../logging/events.js';
 import { logger } from '../logging/logger.js';
 import {
+  incrementRenewalFailure,
+  incrementRenewalSuccess,
   incrementTokenValidationFailure,
   incrementTokenValidationTotal
 } from '../metrics/adapter.js';
@@ -162,14 +164,29 @@ export const processJoinRequest = async ({
         issuer: authSettings.issuer!
       });
     } catch (error) {
-        let failureReason: AuthRejectionReason = 'token_invalid';
-        let metricsReason: AccessTokenValidationReason = 'other';
-        let logReason: string = 'other';
+      let failureReason: AuthRejectionReason = 'token_invalid';
+      let metricsReason: AccessTokenValidationReason = 'other';
+      let logReason: string = 'other';
 
       if (error instanceof AccessTokenValidationError) {
         metricsReason = error.reason;
         failureReason = mapValidationReasonToRejection(error.reason);
         logReason = error.reason;
+        if (error.reason === 'expired') {
+          logAuthEvent(
+            {
+              type: 'auth.renewal.failure',
+              sessionId: client.sessionId,
+              reason: 'expired'
+            },
+            'warn'
+          );
+          incrementRenewalFailure('expired', { stage: 'join' });
+        } else {
+          incrementRenewalFailure(error.reason, { stage: 'join' });
+        }
+      } else {
+        incrementRenewalFailure('other', { stage: 'join' });
       }
 
       const message = resolveAuthErrorMessage(failureReason);
@@ -196,6 +213,12 @@ export const processJoinRequest = async ({
       sessionId: client.sessionId,
       playerId
     });
+    logAuthEvent({
+      type: 'auth.renewal.success',
+      sessionId: client.sessionId,
+      playerId
+    });
+    incrementRenewalSuccess({ stage: 'join' });
   }
 
   const roles = deriveRolesFromClaims(claims);
