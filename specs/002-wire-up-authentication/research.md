@@ -58,3 +58,9 @@ Consolidates resolution of technical unknowns and records rationale for key deci
 
 ## Summary
 All prior clarifications resolved. No remaining NEEDS CLARIFICATION markers. Proceed to Phase 1 design artifacts.
+
+### Load Test Snapshot (T047)
+- Scenario: 500 concurrent placeholder-room joins, 1 iteration, 1s session hold, 500ms heartbeat delay.
+- Environment: Local Linux host, server launched with MSAL auth disabled (env vars cleared) to focus on transport throughput.
+- Results: 500 / 500 successful sessions, join latency p50 599ms, p95 622ms, average 583ms. No failures observed.
+- Notes: `colyseus.js` emitted repeated `onMessage()` warnings because the placeholder client does not register an envelope handler yet; these log lines are benign for this scenario.

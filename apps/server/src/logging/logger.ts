@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { createHash } from 'node:crypto';
 
 import { env, type LogLevel } from '../config/env.js';
 
@@ -27,6 +28,72 @@ const correlationStore = new AsyncLocalStorage<string | null>();
 
 const getCorrelationId = (): string | null => correlationStore.getStore() ?? null;
 
+const SENSITIVE_KEY_PATTERNS = ['token', 'secret', 'password', 'authorization', 'cookie'];
+const MAX_STRING_LENGTH = 256;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const hashEmail = (value: string): string => {
+  const hash = createHash('sha256').update(value).digest('hex').slice(0, 16);
+  return `email_hash:${hash}`;
+};
+
+const sanitizeValue = (value: unknown, keyHint: string): unknown => {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry, index) => sanitizeValue(entry, `${keyHint}[${index}]`));
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>);
+    return entries.reduce<Record<string, unknown>>((acc, [key, entry]) => {
+      acc[key] = sanitizeValue(entry, key);
+      return acc;
+    }, {});
+  }
+
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  const normalizedKey = keyHint.toLowerCase();
+
+  if (SENSITIVE_KEY_PATTERNS.some((pattern) => normalizedKey.includes(pattern))) {
+    return '[REDACTED]';
+  }
+
+  if (EMAIL_REGEX.test(trimmed)) {
+    return hashEmail(trimmed);
+  }
+
+  if (trimmed.length > MAX_STRING_LENGTH) {
+    const visible = trimmed.slice(0, MAX_STRING_LENGTH);
+    const truncated = trimmed.length - MAX_STRING_LENGTH;
+    return `${visible}…[truncated ${truncated} chars]`;
+  }
+
+  return trimmed;
+};
+
+const sanitizeContext = (context: LogContext): LogContext => {
+  if (!context) {
+    return context;
+  }
+
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(context)) {
+    sanitized[key] = sanitizeValue(value, key);
+  }
+  return sanitized;
+};
+
 const includeCorrelationId = (context: LogContext): LogContext => {
   const correlationId = getCorrelationId();
   if (!correlationId) {
@@ -44,7 +111,7 @@ const formatPayload = (level: LogLevel, message: string, context?: LogContext) =
   level,
   message,
   timestamp: new Date().toISOString(),
-  ...includeCorrelationId(context)
+  ...includeCorrelationId(sanitizeContext(context))
 });
 
 const logWithConsole = (level: LogLevel, message: string, context?: LogContext): void => {

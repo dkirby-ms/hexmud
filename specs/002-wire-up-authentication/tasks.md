@@ -91,27 +91,27 @@ Independent Test: Force near-expiry token -> silent renewal obtains new token wi
 ### Tests (Write First)
 - [X] T034 [P] [US3] Add unit test simulating token nearing expiry triggering silent renewal path in `apps/web/tests/unit/authHook.test.ts` (mock `acquireTokenSilent` re-issue).
 - [X] T035 [P] [US3] Add unit test for renewal failure then success on retry (exponential backoff mocked) verifying log events sequence.
-- [ ] T036 [P] [US3] Add integration test: expired token used on join triggers unauthorized then client renews and retries successfully (new `apps/web/tests/contract/connectionRenewal.test.tsx` or integration analog).
-- [ ] T037 [P] [US3] Add test for sign-out: after calling signOut, join attempt fails until re-auth.
+- [X] T036 [P] [US3] Add integration test: expired token used on join triggers unauthorized then client renews and retries successfully (new `apps/web/tests/contract/connectionRenewal.test.tsx` or integration analog).
+- [X] T037 [P] [US3] Add test for sign-out: after calling signOut, join attempt fails until re-auth.
 
 ### Implementation
-- [ ] T038 [US3] Implement renewal timer / scheduler in `useAuth.ts` (background interval checking remaining lifetime; <5m triggers refresh) respecting existing refresh logic.
-- [ ] T039 [P] [US3] Add exponential backoff retry strategy (60s base) for renewal failure until expiry window exceeded; surface state changes.
-- [ ] T040 [US3] Emit client console log placeholders for renewal success/failure (align names with server events for future telemetry linking).
-- [ ] T041 [P] [US3] Extend `signOut` to broadcast (e.g., localStorage key write) so other tabs detect sign-out (basic multi-tab coherence per edge case list) (FR-013 enhancement; minimal implementation).
-- [ ] T042 [US3] On sign-out ensure any running renewal timer cleared (prevent memory leaks) in `useAuth.ts`.
-- [ ] T043 [P] [US3] Update server `join.ts` to detect expired token mid-session scenario (if token invalid after initial join attempt) ensuring standardized rejection reason (edge case) (may already covered by validation; just add explicit log path if missing).
-- [ ] T044 [US3] Add metrics increments for renewal success/failure (T009 scaffolding) and ensure gauge adjust if sign-out disconnects sessions.
-- [ ] T045 [P] [US3] Update quickstart with renewal behavior & troubleshooting table (network failure, backoff, manual reauth prompt).
-- [ ] T046 [US3] Document sign-out + multi-tab propagation in `docs/auth-config.md`.
+- [X] T038 [US3] Implement renewal timer / scheduler in `useAuth.ts` (background interval checking remaining lifetime; <5m triggers refresh) respecting existing refresh logic.
+- [X] T039 [P] [US3] Add exponential backoff retry strategy (60s base) for renewal failure until expiry window exceeded; surface state changes.
+- [X] T040 [US3] Emit client console log placeholders for renewal success/failure (align names with server events for future telemetry linking).
+- [X] T041 [P] [US3] Extend `signOut` to broadcast (e.g., localStorage key write) so other tabs detect sign-out (basic multi-tab coherence per edge case list) (FR-013 enhancement; minimal implementation).
+- [X] T042 [US3] On sign-out ensure any running renewal timer cleared (prevent memory leaks) in `useAuth.ts`.
+- [X] T043 [P] [US3] Update server `join.ts` to detect expired token mid-session scenario (if token invalid after initial join attempt) ensuring standardized rejection reason (edge case) (may already covered by validation; just add explicit log path if missing).
+- [X] T044 [US3] Add metrics increments for renewal success/failure (T009 scaffolding) and ensure gauge adjust if sign-out disconnects sessions.
+- [X] T045 [P] [US3] Update quickstart with renewal behavior & troubleshooting table (network failure, backoff, manual reauth prompt).
+- [X] T046 [US3] Document sign-out + multi-tab propagation in `docs/auth-config.md`.
 
 **Checkpoint**: US3 complete; long-lived sessions sustained; sign-out hygiene verified.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 Purpose: Hardening, documentation, performance validation, and cleanup across stories.
 
-- [ ] T047 Run load test `scripts/load-test.ts` scenario for 500 concurrent sessions measuring added latency (<5% overhead) and document results in `specs/002-wire-up-authentication/research.md` appendix.
-- [ ] T048 [P] Scrub logs to ensure no PII beyond allowed fields; add redaction or truncation where necessary in `apps/server/src/logging/logger.ts` (hash email if logged).
+- [X] T047 Run load test `scripts/load-test.ts` scenario for 500 concurrent sessions measuring added latency (<5% overhead) and document results in `specs/002-wire-up-authentication/research.md` appendix.
+- [X] T048 [P] Scrub logs to ensure no PII beyond allowed fields; add redaction or truncation where necessary in `apps/server/src/logging/logger.ts` (hash email if logged).
 - [ ] T049 [P] Add README performance section summarizing SC-001..SC-006 achievement snapshot.
 - [ ] T050 Review metrics naming consistency vs spec & update naming map in `docs/auth-config.md`.
 - [ ] T051 [P] Refactor any duplicated role extraction logic into helper `apps/server/src/auth/extractRoles.ts` (if duplication detected after US2 completion).

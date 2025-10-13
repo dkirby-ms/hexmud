@@ -47,6 +47,13 @@ Silent renewal kicks in when a token has fewer than five minutes of validity rem
 
 Administrators should ensure clocks are synchronized to keep within the permitted ±120 second skew buffer enforced on the server.
 
+## Multi-Tab Sign-Out Propagation
+
+- **Sentinel Key:** The web client writes and immediately removes a `localStorage` sentinel key (`hexmud:auth:signout`) whenever a user signs out.
+- **Event Listener:** Other open tabs listen for the storage event and clear their authentication state when they detect the sentinel, ensuring a consistent logout experience without sharing token material.
+- **Fallback Behaviour:** Browsers that block storage events (certain private/incognito modes) will not receive the broadcast automatically. In those cases, users should manually refresh or sign out from each tab.
+- **Security Note:** No tokens or PII are persisted—only the ephemeral sentinel is used to coordinate state.
+
 ## Reference
 
 - Feature plan: [`specs/002-wire-up-authentication/plan.md`](../specs/002-wire-up-authentication/plan.md)

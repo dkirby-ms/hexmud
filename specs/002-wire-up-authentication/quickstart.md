@@ -22,10 +22,21 @@
 5. If the user cancels the sign-in dialog, the UI reports a non-intrusive “Sign-in cancelled” status and remains unauthenticated until the user retries.
 
 ## Renewal
-- Silent renewal attempted automatically when <5 minutes token lifetime remain (background or on-demand before join).
+- Silent renewal automatically begins once the remaining token lifetime drops below **5 minutes**.
+- The client schedules the next renewal immediately after each successful acquisition.
+- Failures trigger exponential backoff (starting at 60 seconds, doubling up to 5 minutes) while the token is still within the renewal window.
+- If the window is exceeded or the provider requests interaction, the hook transitions to `unauthenticated` so the UI can prompt for manual reauth.
+
+| Scenario | What happens | Recommended action |
+|----------|--------------|--------------------|
+| Temporary network failure | Renewal retries using exponential backoff without user interruption. | Wait for automatic retry; verify connectivity if retries exceed a few minutes. |
+| Provider outage or interactive requirement | MSAL raises an interaction-required error; `useAuth` surfaces `unauthenticated`. | Show a re-authentication prompt (e.g., redirect sign-in button) and guide the user to retry once the provider recovers. |
+| Long-lived play session (>1h) | Renewals continue transparently every time the remaining lifetime crosses the 5-minute threshold. | No action required; monitor renewal logs/metrics if diagnosing issues. |
+| Testing with mocked tokens | Timers can be advanced with fake timers (see unit tests) to simulate multiple renewals rapidly. | Use the provided Vitest suites as a template for additional scenarios. |
 
 ## Sign Out
-- Invokes provider logout (popup/redirect as implemented) and clears local state; subsequent joins require reauth.
+- Invokes provider logout (popup-based in the current implementation), clears local session state, and broadcasts a sign-out sentinel via `localStorage` so other open tabs return to the unauthenticated state.
+- Subsequent joins require a fresh sign-in; ensure UI reflects the unauthenticated status promptly after sign-out.
 
 ## Testing
 - Unit tests in `apps/web/tests/unit/authHook.test.ts` cover popup sign-in & silent acquisition.
@@ -36,8 +47,12 @@
 - Add claim parsing in `useAuth` and server join mapping to include `moderator` when present.
 
 ## Troubleshooting
-- "Authentication is disabled": Ensure env variables populated; check `isMsalConfigured` true.
-- Token rejected: Confirm JWKS URI reachable and authority/audience match.
-- Silent renewal fails repeatedly: Check clock skew and network connectivity.
-- Redirect loop: Ensure the redirect URI in Azure Entra ID matches `VITE_MSAL_REDIRECT_URI`. Use popup fallback to confirm credentials while debugging.
-- Popup blocked: Most browsers block popups unless initiated by user action. Use the default redirect button whenever possible.
+
+| Symptom | Likely cause | Suggested fix |
+|---------|--------------|---------------|
+| "Authentication is disabled" banner | Missing or misconfigured MSAL environment variables. | Verify `.env` values match Azure Entra app registration; restart `pnpm dev` after changes. |
+| Token rejected on join | Audience/issuer mismatch or JWKS endpoint unavailable. | Confirm `MSAL_CLIENT_ID`, `MSAL_AUTHORITY`, and `MSAL_JWKS_URI`; check server logs for `auth.token.validation.failure`. |
+| Silent renewal keeps warning about failures | Network instability or throttling is delaying token acquisition. | Allow backoff retries to proceed; if it persists beyond the expiry window, prompt the user to sign in again. |
+| Redirect loop when signing in | Redirect URI misconfigured between app and Azure portal. | Ensure `VITE_MSAL_REDIRECT_URI` matches the registered URI; temporarily use popup login to regain access. |
+| Popup blocked notice | Browser blocked the popup fallback flow. | Use the default redirect button or allow popups for the site when testing fallback mode. |
+| Multi-tab sign-out not propagating | Browser prevented `localStorage` events (e.g., private mode restrictions). | Refresh other tabs or sign out directly from each tab; confirm storage access is permitted. |
