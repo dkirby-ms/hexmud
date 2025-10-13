@@ -112,9 +112,9 @@ Purpose: Hardening, documentation, performance validation, and cleanup across st
 
 - [X] T047 Run load test `scripts/load-test.ts` scenario for 500 concurrent sessions measuring added latency (<5% overhead) and document results in `specs/002-wire-up-authentication/research.md` appendix.
 - [X] T048 [P] Scrub logs to ensure no PII beyond allowed fields; add redaction or truncation where necessary in `apps/server/src/logging/logger.ts` (hash email if logged).
-- [ ] T049 [P] Add README performance section summarizing SC-001..SC-006 achievement snapshot.
-- [ ] T050 Review metrics naming consistency vs spec & update naming map in `docs/auth-config.md`.
-- [ ] T051 [P] Refactor any duplicated role extraction logic into helper `apps/server/src/auth/extractRoles.ts` (if duplication detected after US2 completion).
+- [X] T049 [P] Add README performance section summarizing SC-001..SC-006 achievement snapshot.
+- [X] T050 Review metrics naming consistency vs spec & update naming map in `docs/auth-config.md`.
+- [X] T051 [P] Refactor any duplicated role extraction logic into helper `apps/server/src/auth/extractRoles.ts` (if duplication detected after US2 completion).
 - [ ] T052 Ensure all TODO comments resolved or converted to tracked issues; update `tasks.md` status if automation available.
 - [ ] T053 [P] Final pass: confirm protocol version unchanged or bump if envelope modification required; update `packages/protocol/CHANGELOG.md` accordingly.
 - [ ] T054 Validate quickstart end-to-end using clean environment: sign-in, join, renewal simulated, sign-out; record in `quickstart.md` results section.

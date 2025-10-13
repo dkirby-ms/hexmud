@@ -47,6 +47,26 @@ Silent renewal kicks in when a token has fewer than five minutes of validity rem
 
 Administrators should ensure clocks are synchronized to keep within the permitted ±120 second skew buffer enforced on the server.
 
+## Metrics Naming Map
+
+Authentication observability follows a strict naming scheme so dashboards can be assembled consistently across environments. The table below links each metric to the feature requirements and success criteria.
+
+| Metric Name | Type | Description | Requirement Alignment |
+|-------------|------|-------------|-----------------------|
+| `sessions_total` | Counter | Incremented whenever an authenticated session is created. | FR-006, SC-006 |
+| `sessions_active` | Gauge | Snapshot of active authenticated sessions; update on join/leave. | FR-011, SC-006 |
+| `auth_token_validation_total` | Counter | Total validation attempts (success + failure). | FR-004, FR-011, SC-002 |
+| `auth_token_validation_failure_total` | Counter (label `reason`) | Token validations rejected by the server (expired, signature, nbfSkew, claimMissing, revoked, other). | FR-004, FR-011, SC-002 |
+| `auth_signin_success_total` | Counter | Successful sign-in completions reported by client or server. | FR-001, SC-001 |
+| `auth_signin_failure_total` | Counter (label `reason`) | Sign-in attempts that fail or are cancelled. | FR-001, FR-010 |
+| `auth_renewal_success_total` | Counter | Silent renewals that yield a fresh token. | FR-007, SC-003 |
+| `auth_renewal_failure_total` | Counter (label `reason`) | Renewal attempts that fail (network, interactionRequired, other). | FR-007, FR-010, SC-003 |
+| `auth_signin_duration_ms` | Histogram (value in ms) | Measures time from user action to authenticated state. | FR-011, SC-001 |
+| `auth_renewal_latency_ms` | Histogram (value in ms) | Latency of each renewal request. | FR-011, SC-003 |
+| `auth_join_latency_overhead_ms` *(reserved)* | Histogram (value in ms) | Planned metric for additional join latency vs unauth baseline. Name reserved for T061 instrumentation. | FR-011, SC-004 |
+
+> **Integration note:** Client and server emitters funnel through `apps/server/src/metrics/adapter.ts`. Update this mapping if new metric helpers are added or renamed.
+
 ## Multi-Tab Sign-Out Propagation
 
 - **Sentinel Key:** The web client writes and immediately removes a `localStorage` sentinel key (`hexmud:auth:signout`) whenever a user signs out.

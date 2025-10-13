@@ -8,6 +8,7 @@ import {
   type AccessTokenValidationReason,
   validateAccessToken
 } from '../auth/validateToken.js';
+import { extractRoles } from '../auth/extractRoles.js';
 import { env } from '../config/env.js';
 import type { AuthLogEvent } from '../logging/events.js';
 import { logger } from '../logging/logger.js';
@@ -61,44 +62,6 @@ const authSettings = (() => {
     jwksUri: jwksUri ?? undefined
   } as const;
 })();
-
-const DEFAULT_ROLES = Object.freeze(['player'] as const);
-
-const deriveRolesFromClaims = (claims?: AccessTokenClaims): string[] => {
-  if (!claims) {
-    return [...DEFAULT_ROLES];
-  }
-
-  const roles = new Set<string>(DEFAULT_ROLES);
-
-  if (claims.moderator === true) {
-    roles.add('moderator');
-  }
-
-  const rawRoles = (claims as { roles?: unknown }).roles;
-
-  if (Array.isArray(rawRoles)) {
-    for (const role of rawRoles) {
-      if (typeof role === 'string') {
-        const normalized = role.trim().toLowerCase();
-        if (normalized === 'moderator') {
-          roles.add('moderator');
-        } else if (normalized.length > 0) {
-          roles.add(normalized);
-        }
-      }
-    }
-  } else if (typeof rawRoles === 'string') {
-    const normalized = rawRoles.trim().toLowerCase();
-    if (normalized === 'moderator') {
-      roles.add('moderator');
-    } else if (normalized.length > 0) {
-      roles.add(normalized);
-    }
-  }
-
-  return Array.from(roles);
-};
 
 const mapValidationReasonToRejection = (
   reason: AccessTokenValidationReason
@@ -221,7 +184,7 @@ export const processJoinRequest = async ({
     incrementRenewalSuccess({ stage: 'join' });
   }
 
-  const roles = deriveRolesFromClaims(claims);
+  const roles = extractRoles(claims);
 
   return {
     playerId,
