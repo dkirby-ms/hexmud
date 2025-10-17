@@ -118,7 +118,15 @@ describe('authenticated join flow', () => {
 
   it('rejects tokens with invalid signatures and does not create a session', async () => {
     const validToken = await authContext!.issueToken();
-    const tamperedToken = `${validToken.slice(0, -1)}x`;
+    const tamperedToken = (() => {
+      const parts = validToken.split('.');
+      if (parts.length !== 3) {
+        throw new Error('unexpected token format');
+      }
+      const [header, payload, signature = ''] = parts;
+      const mutatedSignature = signature.replace(/.$/, (char) => (char === 'A' ? 'B' : 'A'));
+      return [header, payload, mutatedSignature].join('.');
+    })();
 
     const port = serverPort ?? Number(process.env.SERVER_PORT ?? '2567');
     const client = new Client(`ws://127.0.0.1:${port}`);

@@ -21,6 +21,7 @@ export interface AuthenticatedTestContext {
   audience: string;
   issuer: string;
   jwksUri: string;
+  requiredScope: string;
 }
 
 interface MockIdentityProvider {
@@ -29,6 +30,7 @@ interface MockIdentityProvider {
   jwksUri: string;
   issueToken: (claims?: Partial<AccessTokenClaims>) => Promise<string>;
   stop: () => Promise<void>;
+  requiredScope: string;
 }
 
 const createMockIdentityProvider = async (): Promise<MockIdentityProvider> => {
@@ -39,13 +41,41 @@ const createMockIdentityProvider = async (): Promise<MockIdentityProvider> => {
   publicJwk.use = 'sig';
   publicJwk.alg = 'RS256';
 
+  const tenantId = randomUUID();
   const jwksPath = '/.well-known/jwks.json';
+  const openIdConfigPath = `/${tenantId}/v2.0/.well-known/openid-configuration`;
+
+  let authorityBase: string | undefined;
+  let issuer: string | undefined;
+  let jwksUri: string | undefined;
+
   const server = createServer((req, res) => {
     if (req.method === 'GET' && req.url === jwksPath) {
       res.writeHead(200, {
         'content-type': 'application/json'
       });
       res.end(JSON.stringify({ keys: [publicJwk] }));
+      return;
+    }
+
+    if (req.method === 'GET' && req.url === openIdConfigPath) {
+      if (!issuer || !jwksUri || !authorityBase) {
+        res.writeHead(503);
+        res.end();
+        return;
+      }
+      res.writeHead(200, {
+        'content-type': 'application/json',
+        'cache-control': 'max-age=60'
+      });
+      res.end(
+        JSON.stringify({
+          issuer,
+          jwks_uri: jwksUri,
+          authorization_endpoint: `${authorityBase}/oauth2/v2.0/authorize`,
+          token_endpoint: `${authorityBase}/oauth2/v2.0/token`
+        })
+      );
       return;
     }
 
@@ -58,18 +88,23 @@ const createMockIdentityProvider = async (): Promise<MockIdentityProvider> => {
   });
 
   const address = server.address() as AddressInfo;
-  const issuer = `https://login.microsoftonline.com/${randomUUID()}/v2.0`;
+  authorityBase = `http://127.0.0.1:${address.port}/${tenantId}`;
+  issuer = `${authorityBase}/v2.0`;
   const audience = `test-client-${randomUUID()}`;
-  const jwksUri = `http://127.0.0.1:${address.port}${jwksPath}`;
+  jwksUri = `http://127.0.0.1:${address.port}${jwksPath}`;
+  const requiredScopeName = 'GameService.Access';
+  const requiredScopeFull = `api://${audience}/${requiredScopeName}`;
 
   const issueToken = async (claims: Partial<AccessTokenClaims> = {}): Promise<string> => {
     const defaultOid = claims.oid ?? randomUUID();
     const { nbf, exp, ...restClaims } = claims;
+    const scopeClaim = restClaims.scp ?? requiredScopeName;
 
     return new SignJWT({
       preferred_username: restClaims.preferred_username ?? 'player@example.com',
       name: restClaims.name ?? 'Test Player',
       oid: defaultOid,
+      scp: scopeClaim,
       ...restClaims
     })
       .setProtectedHeader({ alg: 'RS256', kid })
@@ -93,15 +128,23 @@ const createMockIdentityProvider = async (): Promise<MockIdentityProvider> => {
       });
     });
 
-  return { audience, issuer, jwksUri, issueToken, stop };
+  return {
+    audience,
+    issuer,
+    jwksUri,
+    issueToken,
+    stop,
+    requiredScope: requiredScopeFull
+  };
 };
 
 export const createAuthenticatedTestContext = async (): Promise<AuthenticatedTestContext> => {
   const provider = await createMockIdentityProvider();
 
-  process.env.MSAL_CLIENT_ID = provider.audience;
   process.env.MSAL_AUTHORITY = provider.issuer;
   process.env.MSAL_JWKS_URI = provider.jwksUri;
+  process.env.MSAL_API_AUDIENCE = provider.audience;
+  process.env.MSAL_REQUIRED_SCOPE = provider.requiredScope;
   process.env.SERVER_PORT = '0';
 
   vi.resetModules();
@@ -110,9 +153,10 @@ export const createAuthenticatedTestContext = async (): Promise<AuthenticatedTes
 
   const teardown = async () => {
     await provider.stop();
-    delete process.env.MSAL_CLIENT_ID;
     delete process.env.MSAL_AUTHORITY;
     delete process.env.MSAL_JWKS_URI;
+    delete process.env.MSAL_API_AUDIENCE;
+    delete process.env.MSAL_REQUIRED_SCOPE;
     delete process.env.SERVER_PORT;
   };
 
@@ -122,6 +166,7 @@ export const createAuthenticatedTestContext = async (): Promise<AuthenticatedTes
     teardown,
     audience: provider.audience,
     issuer: provider.issuer,
-    jwksUri: provider.jwksUri
+    jwksUri: provider.jwksUri,
+    requiredScope: provider.requiredScope
   };
 };

@@ -25,7 +25,8 @@ describe('join authentication guard', () => {
   let JoinRejectedError: typeof import('../../src/handlers/join.js')['JoinRejectedError'];
 
   beforeAll(() => {
-    process.env.MSAL_CLIENT_ID = 'test-client-id';
+    process.env.MSAL_API_AUDIENCE = 'test-api-client-id';
+    process.env.MSAL_REQUIRED_SCOPE = 'api://test-api-client-id/GameService.Access';
     process.env.MSAL_AUTHORITY = 'https://login.microsoftonline.com/test-tenant/v2.0';
     process.env.MSAL_JWKS_URI = 'https://example.com/discovery/v2.0/keys';
   });
@@ -39,7 +40,8 @@ describe('join authentication guard', () => {
   });
 
   afterAll(() => {
-    delete process.env.MSAL_CLIENT_ID;
+    delete process.env.MSAL_API_AUDIENCE;
+    delete process.env.MSAL_REQUIRED_SCOPE;
     delete process.env.MSAL_AUTHORITY;
     delete process.env.MSAL_JWKS_URI;
   });

@@ -5,7 +5,7 @@ import { getRemoteJwks } from './jwks.js';
 export interface ValidateAccessTokenOptions {
   jwksUri: string;
   audience: string;
-  issuer: string;
+  issuer?: string | string[];
 }
 
 export interface AccessTokenClaims extends JWTPayload {
@@ -14,6 +14,7 @@ export interface AccessTokenClaims extends JWTPayload {
   name?: string;
   moderator?: boolean;
   roles?: string[];
+  scp?: string;
 }
 
 export const CLOCK_SKEW_TOLERANCE_SECONDS = 120;

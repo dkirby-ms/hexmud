@@ -22,9 +22,9 @@ Define the following variables in `apps/web/.env` (see `.env.example` for a temp
 | Variable | Description |
 |----------|-------------|
 | `VITE_MSAL_CLIENT_ID` | Azure Entra ID application (client) ID exposed to the SPA. |
-| `VITE_MSAL_AUTHORITY` | Authority URL, e.g. `https://login.microsoftonline.com/<tenantId>/`. |
+| `VITE_MSAL_AUTHORITY` | Authority URL, ideally the friendly CIAM domain you assigned (e.g. `https://example.ciamlogin.com/<tenantId>/v2.0`). Ensure the host and `/v2.0` suffix match the issuer that appears in tokens. |
 | `VITE_MSAL_REDIRECT_URI` | Redirect URI registered with the app. Defaults to the app origin when omitted. |
-| `VITE_MSAL_SCOPES` | Comma-separated scopes requested during sign-in; defaults to `openid,profile`. |
+| `VITE_MSAL_SCOPES` | Comma-separated scopes requested during sign-in; include the API scope (e.g. `api://<api-app-id>/GameService.Access`) along with `openid,profile`. |
 
 ### Server (`apps/server`)
 
@@ -32,9 +32,11 @@ Define the following variables in `apps/server/.env` (see `.env.example` for a t
 
 | Variable | Description |
 |----------|-------------|
-| `MSAL_CLIENT_ID` | Must match the SPA client ID. Used to validate the `aud` claim. |
-| `MSAL_AUTHORITY` | Same authority URL used by the client. Validated against the token `iss`. |
-| `MSAL_JWKS_URI` | JWKS endpoint exposed by the identity provider for signature validation. |
+| `MSAL_API_AUDIENCE` | Application (client) ID of the protected API resource. Must match the access token `aud`. |
+| `MSAL_REQUIRED_SCOPE` | Full scope identifier (e.g. `api://<api-app-id>/GameService.Access`) expected in the `scp` claim. |
+| `MSAL_AUTHORITY` | Same authority URL used by the client. Must point at the friendly CIAM domain you registered (e.g. `https://example.ciamlogin.com/<tenantId>/v2.0`) so that both endpoint discovery and the token `iss` host align. |
+| `MSAL_JWKS_URI` | JWKS endpoint exposed by the identity provider for signature validation. Typically the authority host with `/discovery/v2.0/keys`; update if you leverage a custom domain or alternate issuer. |
+| `MSAL_CLIENT_ID` *(optional)* | SPA client ID retained for compatibility; not used once `MSAL_API_AUDIENCE` is configured. |
 
 ## Renewal Strategy
 

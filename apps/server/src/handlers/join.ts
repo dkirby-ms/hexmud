@@ -9,6 +9,7 @@ import {
   validateAccessToken
 } from '../auth/validateToken.js';
 import { extractRoles } from '../auth/extractRoles.js';
+import { getOpenIdConfiguration, OpenIdConfigurationError } from '../auth/openidConfiguration.js';
 import { env } from '../config/env.js';
 import type { AuthLogEvent } from '../logging/events.js';
 import { logger } from '../logging/logger.js';
@@ -53,13 +54,15 @@ interface ProcessJoinRequestParams {
 }
 
 const authSettings = (() => {
-  const { clientId, authority, jwksUri } = env.msal;
-  const enabled = Boolean(clientId && authority && jwksUri);
+  const { apiAudience, authority, jwksUri, requiredScope } = env.msal;
+  const enabled = Boolean(apiAudience && authority);
+
   return {
     enabled,
-    audience: clientId ?? undefined,
-    issuer: authority ?? undefined,
-    jwksUri: jwksUri ?? undefined
+    authority: authority ?? undefined,
+    audience: apiAudience ?? undefined,
+    jwksUri: jwksUri ?? undefined,
+    requiredScopeName: requiredScope.name ?? undefined
   } as const;
 })();
 
@@ -121,17 +124,46 @@ export const processJoinRequest = async ({
 
     try {
       incrementTokenValidationTotal({ stage: 'join' });
+      const discovery = await getOpenIdConfiguration(authSettings.authority!);
+      const jwksUri = discovery.jwks_uri ?? authSettings.jwksUri;
+
+      if (!jwksUri) {
+        logAuthEvent({
+          type: 'auth.token.validation.failure',
+          sessionId: client.sessionId,
+          reason: 'jwks_missing'
+        }, 'warn');
+        incrementTokenValidationFailure('other', { stage: 'join' });
+        reject('AUTH_REQUIRED', resolveAuthErrorMessage('token_invalid'));
+      }
+
       claims = await validateAccessToken(token!, {
-        jwksUri: authSettings.jwksUri!,
+        jwksUri,
         audience: authSettings.audience!,
-        issuer: authSettings.issuer!
+        issuer: discovery.issuer
       });
+
+      if (authSettings.requiredScopeName) {
+        const scopeList = claims.scp ? claims.scp.split(' ').filter(Boolean) : [];
+        if (!scopeList.includes(authSettings.requiredScopeName)) {
+          incrementTokenValidationFailure('claimMissing', { stage: 'join' });
+          incrementRenewalFailure('claimMissing', { stage: 'join' });
+          logAuthEvent({
+            type: 'auth.token.validation.failure',
+            sessionId: client.sessionId,
+            reason: 'scope_missing'
+          }, 'warn');
+          reject('AUTH_REQUIRED', resolveAuthErrorMessage('token_claim_invalid'));
+        }
+      }
     } catch (error) {
       let failureReason: AuthRejectionReason = 'token_invalid';
       let metricsReason: AccessTokenValidationReason = 'other';
       let logReason: string = 'other';
 
-      if (error instanceof AccessTokenValidationError) {
+      if (error instanceof OpenIdConfigurationError) {
+        logReason = `openid_${error.code}`;
+      } else if (error instanceof AccessTokenValidationError) {
         metricsReason = error.reason;
         failureReason = mapValidationReasonToRejection(error.reason);
         logReason = error.reason;
