@@ -65,9 +65,6 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T007 Create base models/entities that all stories depend on
 - [ ] T008 Configure error handling and logging infrastructure
 - [ ] T009 Setup environment configuration management
-- [ ] T010 Add structured logging base (JSON formatter, correlation IDs)
-- [ ] T011 Implement replay harness scaffold (if simulation components exist)
-- [ ] T012 Define Redis key namespace strategy doc (matchmaking/session/ratelimit)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -79,24 +76,21 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 1 (Simulation / Contracts / Security per Constitution) ⚠️
+### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
 
 **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T020 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].ts
-- [ ] T021 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].ts
-- [ ] T022 [P] [US1] Replay determinism test (if simulation logic) in tests/replay/[name].ts
-- [ ] T023 [P] [US1] Security validation test (schema rejection cases) in tests/security/[name].ts
+- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
+- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
 
 ### Implementation for User Story 1
 
-- [ ] T024 [P] [US1] Create [Entity1] model in src/models/[entity1].ts
-- [ ] T025 [P] [US1] Create [Entity2] model in src/models/[entity2].ts
-- [ ] T026 [US1] Implement [Service] in src/services/[service].ts (depends on T024, T025)
-- [ ] T027 [US1] Implement [endpoint/feature] in src/[location]/[file].ts
-- [ ] T028 [US1] Add validation and error handling
-- [ ] T029 [US1] Add structured logging + metrics for user story 1 operations
-- [ ] T030 [US1] Update replay harness seeds (if applicable)
+- [ ] T012 [P] [US1] Create [Entity1] model in src/models/[entity1].py
+- [ ] T013 [P] [US1] Create [Entity2] model in src/models/[entity2].py
+- [ ] T014 [US1] Implement [Service] in src/services/[service].py (depends on T012, T013)
+- [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
+- [ ] T016 [US1] Add validation and error handling
+- [ ] T017 [US1] Add logging for user story 1 operations
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -252,5 +246,6 @@ With multiple developers:
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+
 
 
