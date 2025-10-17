@@ -1,25 +1,44 @@
-// Structured log event type definitions for authentication lifecycle and related events.
+// Structured log event type definitions for authentication lifecycle.
+
+interface AuthLogEventBase {
+  authCorrId?: string;
+}
 
 export type AuthLogEvent =
-  | {
-      type: 'auth.token.validated';
-      playerId: string;
+  | (AuthLogEventBase & {
+      type: 'auth.signin.success';
       sessionId: string;
-      claims: Record<string, unknown>;
-    }
-  | {
-      type: 'auth.token.invalid';
+      playerId: string;
+      source?: 'redirect' | 'popup' | 'silent';
+    })
+  | (AuthLogEventBase & {
+      type: 'auth.signin.failure';
       sessionId: string;
       reason: string;
-    }
-  | {
-      type: 'auth.token.missing';
+      stage?: 'interactive' | 'silent';
+    })
+  | (AuthLogEventBase & {
+      type: 'auth.token.validation.failure';
       sessionId: string;
-    }
-  | {
-      type: 'auth.identity.persisted';
+      reason: string;
+    })
+  | (AuthLogEventBase & {
+      type: 'auth.signout';
+      sessionId: string;
       playerId: string;
-      claims: Record<string, unknown>;
-    };
+      method?: 'interactive' | 'silent' | 'timeout';
+    })
+  | (AuthLogEventBase & {
+      type: 'auth.renewal.success';
+      sessionId: string;
+      playerId: string;
+      latencyMs?: number;
+    })
+  | (AuthLogEventBase & {
+      type: 'auth.renewal.failure';
+      sessionId: string;
+      reason: string;
+      retryInSeconds?: number;
+    });
 
 export type AuthLogEventType = AuthLogEvent['type'];

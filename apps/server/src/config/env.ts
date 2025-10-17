@@ -58,11 +58,21 @@ export interface ServerEnv {
     tenantId: string | null;
     authority: string | null;
     jwksUri: string | null;
+    apiAudience: string | null;
+    requiredScope: {
+      full: string | null;
+      name: string | null;
+    };
   };
 }
 
 const authority = trimTrailingSlash(process.env.MSAL_AUTHORITY ?? null);
 const jwksUriOverride = process.env.MSAL_JWKS_URI ?? null;
+const apiAudience = process.env.MSAL_API_AUDIENCE ?? null;
+const requiredScopeFull = process.env.MSAL_REQUIRED_SCOPE ?? null;
+const requiredScopeName = requiredScopeFull
+  ? requiredScopeFull.split('/').slice(-1)[0] || null
+  : null;
 
 export const env: ServerEnv = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
@@ -83,7 +93,12 @@ export const env: ServerEnv = {
     clientId: process.env.MSAL_CLIENT_ID ?? null,
     tenantId: process.env.MSAL_TENANT_ID ?? null,
     authority,
-    jwksUri: jwksUriOverride ?? (authority ? `${authority}/discovery/v2.0/keys` : null)
+    jwksUri: jwksUriOverride ?? (authority ? `${authority}/discovery/v2.0/keys` : null),
+    apiAudience,
+    requiredScope: {
+      full: requiredScopeFull,
+      name: requiredScopeName
+    }
   }
 };
 

@@ -1,0 +1,33 @@
+openapi: 3.0.3
+info:
+  title: HexMUD Authentication Extension
+  version: 0.1.0
+  description: Minimal endpoints / message contracts relevant to authentication-enabled join flow.
+paths:
+  /health:
+    get:
+      summary: Service health
+      responses:
+        '200': { description: OK }
+  /join (websocket):
+    description: Logical real-time connection initiated via Colyseus join including accessToken.
+components:
+  schemas:
+    JoinRequest:
+      type: object
+      properties:
+        protocolVersion: { type: integer }
+        accessToken: { type: string, description: 'Bearer token from identity provider' }
+      required: [protocolVersion]
+    JoinErrorEnvelope:
+      type: object
+      properties:
+        error: { type: string }
+        code: { type: string }
+    AuthLogEvent:
+      type: object
+      properties:
+        type: { type: string }
+        sessionId: { type: string }
+        playerId: { type: string }
+        reason: { type: string }

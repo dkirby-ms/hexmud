@@ -51,8 +51,8 @@ describe('authenticated join flow', () => {
       preferred_username: 'adventurer@example.com'
     });
 
-  const port = serverPort ?? Number(process.env.SERVER_PORT ?? '2567');
-  const client = new Client(`ws://127.0.0.1:${port}`);
+    const port = serverPort ?? Number(process.env.SERVER_PORT ?? '2567');
+    const client = new Client(`ws://127.0.0.1:${port}`);
 
     const room = await client.joinOrCreate('placeholder', {
       protocolVersion: PROTOCOL_VERSION,
@@ -64,6 +64,7 @@ describe('authenticated join flow', () => {
     const identity = sessionsStore.getIdentity(expectedPlayerId);
     expect(identity).toBeTruthy();
     expect(identity?.displayName).toBe(expectedDisplayName);
+    expect(identity?.roles).toContain('player');
     expect(identity?.authClaims).toMatchObject({
       oid: expectedPlayerId,
       preferred_username: 'adventurer@example.com'
@@ -71,6 +72,96 @@ describe('authenticated join flow', () => {
 
     const session = sessionsStore.getSession(room.sessionId);
     expect(session?.playerId).toBe(expectedPlayerId);
+
+    await new Promise<void>((resolve) => {
+      room.leave(true);
+      room.onLeave(() => resolve());
+    });
+  });
+
+  it('rejects join requests without an access token when auth is enabled', async () => {
+    const port = serverPort ?? Number(process.env.SERVER_PORT ?? '2567');
+    const client = new Client(`ws://127.0.0.1:${port}`);
+    const activeBefore = sessionsStore.listActiveSessions().length;
+
+    await expect(
+      client.joinOrCreate('placeholder', {
+        protocolVersion: PROTOCOL_VERSION
+      })
+    ).rejects.toThrow(/AUTH_REQUIRED/);
+
+    // Ensure no session records were created
+    expect(sessionsStore.listActiveSessions().length).toBe(activeBefore);
+  });
+
+  it('accepts an access token with a not-before slightly in the future', async () => {
+    const futureNbf = Math.floor(Date.now() / 1000) + 30;
+    const accessToken = await authContext!.issueToken({
+      nbf: futureNbf
+    });
+
+    const port = serverPort ?? Number(process.env.SERVER_PORT ?? '2567');
+    const client = new Client(`ws://127.0.0.1:${port}`);
+
+    const room = await client.joinOrCreate('placeholder', {
+      protocolVersion: PROTOCOL_VERSION,
+      accessToken
+    });
+
+    expect(room.sessionId).toBeTruthy();
+
+    await new Promise<void>((resolve) => {
+      room.leave(true);
+      room.onLeave(() => resolve());
+    });
+  });
+
+  it('rejects tokens with invalid signatures and does not create a session', async () => {
+    const validToken = await authContext!.issueToken();
+    const tamperedToken = (() => {
+      const parts = validToken.split('.');
+      if (parts.length !== 3) {
+        throw new Error('unexpected token format');
+      }
+      const [header, payload, signature = ''] = parts;
+      const mutatedSignature = signature.replace(/.$/, (char) => (char === 'A' ? 'B' : 'A'));
+      return [header, payload, mutatedSignature].join('.');
+    })();
+
+    const port = serverPort ?? Number(process.env.SERVER_PORT ?? '2567');
+    const client = new Client(`ws://127.0.0.1:${port}`);
+    const activeBefore = sessionsStore.listActiveSessions().length;
+
+    await expect(
+      client.joinOrCreate('placeholder', {
+        protocolVersion: PROTOCOL_VERSION,
+        accessToken: tamperedToken
+      })
+    ).rejects.toThrow(/AUTH_REQUIRED/);
+
+    expect(sessionsStore.listActiveSessions().length).toBe(activeBefore);
+  });
+
+  it('records moderator role from token claims into the session identity', async () => {
+    const expectedPlayerId = 'moderator-player';
+    const accessToken = await authContext!.issueToken({
+      oid: expectedPlayerId,
+      name: 'Moderator Example',
+      roles: ['moderator']
+    });
+
+    const port = serverPort ?? Number(process.env.SERVER_PORT ?? '2567');
+    const client = new Client(`ws://127.0.0.1:${port}`);
+
+    const room = await client.joinOrCreate('placeholder', {
+      protocolVersion: PROTOCOL_VERSION,
+      accessToken
+    });
+
+    const identity = sessionsStore.getIdentity(expectedPlayerId);
+    expect(identity).toBeTruthy();
+    expect(identity?.roles).toEqual(expect.arrayContaining(['player', 'moderator']));
+    expect(identity?.authClaims.roles).toContain('moderator');
 
     await new Promise<void>((resolve) => {
       room.leave(true);

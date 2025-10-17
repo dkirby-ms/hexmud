@@ -95,6 +95,24 @@ export const useGameConnection = (): GameConnectionState => {
       authAttemptedRef.current = false;
     }
 
+    if (
+      connectionRef.current &&
+      authStatus !== 'authenticated' &&
+      authStatus !== 'disabled'
+    ) {
+      const existingConnection = connectionRef.current;
+      connectionRef.current = null;
+      if (heartbeatTimer.current) {
+        clearInterval(heartbeatTimer.current);
+        heartbeatTimer.current = null;
+      }
+      void existingConnection.disconnect().catch((error) => {
+        if (import.meta.env.DEV) {
+          console.warn('Failed to disconnect placeholder connection cleanly', error);
+        }
+      });
+    }
+
     const shouldConnect =
       authStatus === 'disabled' || authStatus === 'authenticated';
 
@@ -112,7 +130,8 @@ export const useGameConnection = (): GameConnectionState => {
       let accessToken: string | undefined;
       if (authStatus === 'authenticated') {
         try {
-          const token = authAccessToken ?? (await ensureAuthToken());
+          const ensuredToken = await ensureAuthToken();
+          const token = ensuredToken ?? authAccessToken;
           if (!token) {
             throw new Error('Authentication required');
           }
@@ -187,6 +206,29 @@ export const useGameConnection = (): GameConnectionState => {
               }
               case 'error': {
                 const payload = errorPayloadSchema.parse(envelope.payload);
+                if (payload.code === 'AUTH_REQUIRED' && authStatus === 'authenticated') {
+                  if (heartbeatTimer.current) {
+                    clearInterval(heartbeatTimer.current);
+                    heartbeatTimer.current = null;
+                  }
+                  const existing = connectionRef.current;
+                  connectionRef.current = null;
+                  if (existing) {
+                    void existing.disconnect().catch((error) => {
+                      if (import.meta.env.DEV) {
+                        console.warn('Failed to disconnect placeholder connection cleanly', error);
+                      }
+                    });
+                  }
+                  authAttemptedRef.current = false;
+                  setState((prev) => ({
+                    ...prev,
+                    status: 'connecting',
+                    error: undefined
+                  }));
+                  void connect();
+                  return;
+                }
                 setState((prev) => ({
                   ...prev,
                   status: 'error',

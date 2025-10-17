@@ -35,6 +35,26 @@ Press `Ctrl+C` once to gracefully shut down both processes. The server will disp
 
 See [`specs/001-monorepo-framework-for/quickstart.md`](specs/001-monorepo-framework-for/quickstart.md) for detailed onboarding, troubleshooting tips, and future authentication setup instructions.
 
+## Authentication Setup
+
+Authentication is optional for local prototyping but required to exercise the new auth-enabled join flow:
+
+- Copy `.env.example` to `.env` in both `apps/web` and `apps/server`, then follow the guidance in [`docs/auth-config.md`](docs/auth-config.md).
+- Review the feature-specific quickstart at [`specs/002-wire-up-authentication/quickstart.md`](specs/002-wire-up-authentication/quickstart.md) for redirect flow behaviour, renewal expectations, and troubleshooting steps.
+- When the `MSAL_*` and `VITE_MSAL_*` variables are populated, the web client will automatically prompt for sign-in and attach the validated token to server join requests.
+- The UI exposes a **Sign in (redirect)** button aligned with Decision D1 and a **Use popup fallback** helper when running tests or diagnosing redirect blockers. Cancellation leaves the session unauthenticated without noisy errors; retry when ready.
+
+## Performance Snapshot
+
+| Criteria | Target | Status | Evidence & Next Steps |
+|----------|--------|--------|-----------------------|
+| **SC-001** Sign-in latency | 95% of first-time sign-ins < 8s | On track | Redirect + popup flows covered by `apps/web/tests/unit/authHook.test.ts`; instrumentation for percentile capture planned in T061. Manual dev runs remain comfortably below threshold. |
+| **SC-002** Token validation reliability | <0.5% validation failures (non-test) | In progress | Integration coverage in `apps/server/tests/integration/authJoin.test.ts` shows 0 system failures; production counter wiring scheduled in T062 to report rolling rate. |
+| **SC-003** Renewal continuity | 99% renewals without prompts over 60 min | On track | Renewal + sign-out flows validated via `authHook` unit suites and connection renewal contract tests; extended 60-minute simulation to land with T064. |
+| **SC-004** Auth overhead | Median join overhead <100 ms and <5% delta vs unauth baseline | Monitoring | 500-session load test (T047) recorded join latency p50 599 ms, p95 622 ms with 0 failures; unauth baseline comparison will be captured in T065 before lock-in. |
+| **SC-005** Correlated security logging | 100% rejected attempts include `authCorrId` | Pending | Log event schema finalized in Phase 2; client/server propagation of correlation IDs tracked in T055/T056. |
+| **SC-006** Concurrency support | ≥500 concurrent authenticated sessions within SC-004 budget | ✅ Achieved | Load test `scripts/load-test.ts --concurrency 500` completed with 500/500 successes (avg join 583 ms) as recorded in `specs/002-wire-up-authentication/research.md`. |
+
 ## Repository Layout
 
 ```
@@ -62,6 +82,7 @@ config/     # Shared configuration (eslint, tsconfig, vitest)
 - Feature spec: [`specs/001-monorepo-framework-for/spec.md`](specs/001-monorepo-framework-for/spec.md)
 - Implementation plan: [`specs/001-monorepo-framework-for/plan.md`](specs/001-monorepo-framework-for/plan.md)
 - Quickstart: [`specs/001-monorepo-framework-for/quickstart.md`](specs/001-monorepo-framework-for/quickstart.md)
+- Authentication configuration: [`docs/auth-config.md`](docs/auth-config.md)
 
 ## Protocol Versioning & Breaking Changes
 

@@ -2,12 +2,25 @@
 import { type ErrorCode } from '@hexmud/protocol';
 import type { Client } from 'colyseus';
 
-import { type AccessTokenClaims, validateAccessToken } from '../auth/validateToken.js';
+import {
+  AccessTokenValidationError,
+  type AccessTokenClaims,
+  type AccessTokenValidationReason,
+  validateAccessToken
+} from '../auth/validateToken.js';
+import { extractRoles } from '../auth/extractRoles.js';
+import { getOpenIdConfiguration, OpenIdConfigurationError } from '../auth/openidConfiguration.js';
 import { env } from '../config/env.js';
 import type { AuthLogEvent } from '../logging/events.js';
 import { logger } from '../logging/logger.js';
+import {
+  incrementRenewalFailure,
+  incrementRenewalSuccess,
+  incrementTokenValidationFailure,
+  incrementTokenValidationTotal
+} from '../metrics/adapter.js';
 
-import { sendErrorEnvelope } from './error.js';
+import { resolveAuthErrorMessage, type AuthRejectionReason, sendErrorEnvelope } from './error.js';
 
 const logAuthEvent = (event: AuthLogEvent, level: 'info' | 'warn' = 'info') => {
   const { type, ...context } = event;
@@ -24,6 +37,7 @@ export interface JoinContext {
   playerId: string;
   protocolVersion: number;
   claims?: AccessTokenClaims;
+  roles: string[];
 }
 
 export class JoinRejectedError extends Error {
@@ -40,15 +54,36 @@ interface ProcessJoinRequestParams {
 }
 
 const authSettings = (() => {
-  const { clientId, authority, jwksUri } = env.msal;
-  const enabled = Boolean(clientId && authority && jwksUri);
+  const { apiAudience, authority, jwksUri, requiredScope } = env.msal;
+  const enabled = Boolean(apiAudience && authority);
+
   return {
     enabled,
-    audience: clientId ?? undefined,
-    issuer: authority ?? undefined,
-    jwksUri: jwksUri ?? undefined
+    authority: authority ?? undefined,
+    audience: apiAudience ?? undefined,
+    jwksUri: jwksUri ?? undefined,
+    requiredScopeName: requiredScope.name ?? undefined
   } as const;
 })();
+
+const mapValidationReasonToRejection = (
+  reason: AccessTokenValidationReason
+): AuthRejectionReason => {
+  switch (reason) {
+    case 'expired':
+      return 'token_expired';
+    case 'nbfSkew':
+      return 'token_not_yet_valid';
+    case 'claimMissing':
+      return 'token_claim_invalid';
+    case 'revoked':
+      return 'token_revoked';
+    case 'signature':
+    case 'other':
+    default:
+      return 'token_invalid';
+  }
+};
 
 export const processJoinRequest = async ({
   client,
@@ -79,33 +114,85 @@ export const processJoinRequest = async ({
     const token = options.accessToken?.trim();
     if (!token) {
       logAuthEvent({
-        type: 'auth.token.missing',
-        sessionId: client.sessionId
-      });
-      reject('AUTH_REQUIRED', 'AUTH_REQUIRED: access token is required to join');
+        type: 'auth.token.validation.failure',
+        sessionId: client.sessionId,
+        reason: 'missing_token'
+      }, 'warn');
+      incrementTokenValidationFailure('other', { stage: 'join' });
+      reject('AUTH_REQUIRED', resolveAuthErrorMessage('missing_token'));
     }
 
     try {
+      incrementTokenValidationTotal({ stage: 'join' });
+      const discovery = await getOpenIdConfiguration(authSettings.authority!);
+      const jwksUri = discovery.jwks_uri ?? authSettings.jwksUri;
+
+      if (!jwksUri) {
+        logAuthEvent({
+          type: 'auth.token.validation.failure',
+          sessionId: client.sessionId,
+          reason: 'jwks_missing'
+        }, 'warn');
+        incrementTokenValidationFailure('other', { stage: 'join' });
+        reject('AUTH_REQUIRED', resolveAuthErrorMessage('token_invalid'));
+      }
+
       claims = await validateAccessToken(token!, {
-        jwksUri: authSettings.jwksUri!,
+        jwksUri,
         audience: authSettings.audience!,
-        issuer: authSettings.issuer!
+        issuer: discovery.issuer
       });
-      logAuthEvent({
-        type: 'auth.token.validated',
-        playerId: claims.oid ?? claims.sub ?? client.sessionId,
-        sessionId: client.sessionId,
-        claims
-      });
+
+      if (authSettings.requiredScopeName) {
+        const scopeList = claims.scp ? claims.scp.split(' ').filter(Boolean) : [];
+        if (!scopeList.includes(authSettings.requiredScopeName)) {
+          incrementTokenValidationFailure('claimMissing', { stage: 'join' });
+          incrementRenewalFailure('claimMissing', { stage: 'join' });
+          logAuthEvent({
+            type: 'auth.token.validation.failure',
+            sessionId: client.sessionId,
+            reason: 'scope_missing'
+          }, 'warn');
+          reject('AUTH_REQUIRED', resolveAuthErrorMessage('token_claim_invalid'));
+        }
+      }
     } catch (error) {
-      const reason =
-        error instanceof Error ? error.message : 'failed to validate access token';
+      let failureReason: AuthRejectionReason = 'token_invalid';
+      let metricsReason: AccessTokenValidationReason = 'other';
+      let logReason: string = 'other';
+
+      if (error instanceof OpenIdConfigurationError) {
+        logReason = `openid_${error.code}`;
+      } else if (error instanceof AccessTokenValidationError) {
+        metricsReason = error.reason;
+        failureReason = mapValidationReasonToRejection(error.reason);
+        logReason = error.reason;
+        if (error.reason === 'expired') {
+          logAuthEvent(
+            {
+              type: 'auth.renewal.failure',
+              sessionId: client.sessionId,
+              reason: 'expired'
+            },
+            'warn'
+          );
+          incrementRenewalFailure('expired', { stage: 'join' });
+        } else {
+          incrementRenewalFailure(error.reason, { stage: 'join' });
+        }
+      } else {
+        incrementRenewalFailure('other', { stage: 'join' });
+      }
+
+      const message = resolveAuthErrorMessage(failureReason);
+
+      incrementTokenValidationFailure(metricsReason, { stage: 'join' });
       logAuthEvent({
-        type: 'auth.token.invalid',
+        type: 'auth.token.validation.failure',
         sessionId: client.sessionId,
-        reason
+        reason: logReason
       }, 'warn');
-      reject('AUTH_REQUIRED', `AUTH_REQUIRED: ${reason}`);
+      reject('AUTH_REQUIRED', message);
     }
   }
 
@@ -117,15 +204,24 @@ export const processJoinRequest = async ({
 
   if (claims) {
     logAuthEvent({
-      type: 'auth.identity.persisted',
-      playerId,
-      claims
+      type: 'auth.signin.success',
+      sessionId: client.sessionId,
+      playerId
     });
+    logAuthEvent({
+      type: 'auth.renewal.success',
+      sessionId: client.sessionId,
+      playerId
+    });
+    incrementRenewalSuccess({ stage: 'join' });
   }
+
+  const roles = extractRoles(claims);
 
   return {
     playerId,
     protocolVersion: expectedProtocolVersion,
-    claims
+    claims,
+    roles
   };
 };
