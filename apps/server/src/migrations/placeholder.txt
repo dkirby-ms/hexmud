@@ -1,0 +1,1 @@
+This placeholder ensures the migrations directory is tracked until migrations are implemented.

@@ -4,6 +4,7 @@ import {
   heartbeatPayloadSchema,
   sessionWelcomePayloadSchema
 } from '@hexmud/protocol';
+import type { Room } from 'colyseus.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { connectToPlaceholderWorld, sendHeartbeat } from '../protocol/placeholderClient.js';
@@ -20,6 +21,7 @@ export interface GameConnectionState {
   latencyMs?: number;
   roomMessage?: string;
   error?: string;
+  room?: Room<unknown>;
 }
 
 const parseHeartbeatInterval = (): number => {
@@ -32,7 +34,7 @@ const parseHeartbeatInterval = (): number => {
 };
 
 export const useGameConnection = (): GameConnectionState => {
-  const [state, setState] = useState<GameConnectionState>({ status: 'idle' });
+  const [state, setState] = useState<GameConnectionState>({ status: 'idle', room: undefined });
   const heartbeatTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingHeartbeatAt = useRef<number | null>(null);
   const connectionRef = useRef<Awaited<ReturnType<typeof connectToPlaceholderWorld>> | null>(null);
@@ -72,7 +74,8 @@ export const useGameConnection = (): GameConnectionState => {
       setState((prev) => ({
         ...prev,
         status: 'error',
-        error: authError
+        error: authError,
+        room: undefined
       }));
       return;
     }
@@ -86,7 +89,8 @@ export const useGameConnection = (): GameConnectionState => {
         setState((prev) => ({
           ...prev,
           status: 'error',
-          error: error instanceof Error ? error.message : 'Authentication required'
+          error: error instanceof Error ? error.message : 'Authentication required',
+          room: undefined
         }));
       });
     }
@@ -111,6 +115,11 @@ export const useGameConnection = (): GameConnectionState => {
           console.warn('Failed to disconnect placeholder connection cleanly', error);
         }
       });
+      setState((prev) => ({
+        ...prev,
+        room: undefined,
+        status: 'idle'
+      }));
     }
 
     const shouldConnect =
@@ -125,7 +134,12 @@ export const useGameConnection = (): GameConnectionState => {
     }
 
     const connect = async () => {
-      setState((prev) => ({ ...prev, status: 'connecting', error: undefined }));
+      setState((prev) => ({
+        ...prev,
+        status: 'connecting',
+        error: undefined,
+        room: undefined
+      }));
 
       let accessToken: string | undefined;
       if (authStatus === 'authenticated') {
@@ -140,7 +154,8 @@ export const useGameConnection = (): GameConnectionState => {
           if (isMounted.current) {
             setState({
               status: 'error',
-              error: error instanceof Error ? error.message : 'Authentication required'
+              error: error instanceof Error ? error.message : 'Authentication required',
+              room: undefined
             });
           }
           return;
@@ -156,6 +171,13 @@ export const useGameConnection = (): GameConnectionState => {
 
         connectionRef.current = connection;
         const { room } = connection;
+
+        setState((prev) => ({
+          ...prev,
+          room,
+          status: prev.status === 'connected' ? prev.status : 'connecting',
+          error: undefined
+        }));
 
         room.onMessage('envelope', (raw) => {
           if (!isMounted.current) {
@@ -173,7 +195,8 @@ export const useGameConnection = (): GameConnectionState => {
                   sessionId: payload.sessionId,
                   playerId: payload.playerId,
                   buildNumber: payload.build,
-                  error: undefined
+                  error: undefined,
+                  room
                 }));
                 break;
               }
@@ -224,7 +247,8 @@ export const useGameConnection = (): GameConnectionState => {
                   setState((prev) => ({
                     ...prev,
                     status: 'connecting',
-                    error: undefined
+                    error: undefined,
+                    room: undefined
                   }));
                   void connect();
                   return;
@@ -232,7 +256,8 @@ export const useGameConnection = (): GameConnectionState => {
                 setState((prev) => ({
                   ...prev,
                   status: 'error',
-                  error: payload.message
+                  error: payload.message,
+                  room: undefined
                 }));
                 break;
               }
@@ -257,7 +282,8 @@ export const useGameConnection = (): GameConnectionState => {
             setState((prev) => ({
               ...prev,
               status: 'error',
-              error: `Disconnected (${code})`
+              error: `Disconnected (${code})`,
+              room: undefined
             }));
           }
         });
@@ -279,7 +305,8 @@ export const useGameConnection = (): GameConnectionState => {
         }
         setState({
           status: 'error',
-          error: error instanceof Error ? error.message : 'Unable to connect to the game world'
+          error: error instanceof Error ? error.message : 'Unable to connect to the game world',
+          room: undefined
         });
       }
     };

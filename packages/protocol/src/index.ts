@@ -26,3 +26,45 @@ export type {
 	SessionWelcomeMessage,
 	ErrorMessage
 } from './messages/core.js';
+
+export type {
+	PresenceUpdateReason,
+	PresenceAnomalyType,
+	PresenceSummaryEntry,
+	PresenceSnapshotEntry,
+	PresenceSnapshotPayload,
+	PresenceUpdatePayload,
+	PresenceBundledUpdatePayload,
+	PresenceAnomalyPayload,
+	PresenceErrorCode,
+	PresenceErrorPayload,
+	PresenceRequestSnapshotPayload,
+	PresenceDebugRequestPayload,
+	PresenceDebugDataPayload
+} from './messages/presence.js';
+
+export {
+	presenceHexIdRegex,
+	presenceHexIdSchema,
+	presenceTierIdSchema,
+	presenceSnapshotEntrySchema,
+	presenceSnapshotPayloadSchema,
+	presenceUpdateReasonSchema,
+	presenceUpdatePayloadSchema,
+	presenceBundledUpdatePayloadSchema,
+	presenceAnomalyTypeSchema,
+	presenceAnomalyPayloadSchema,
+	presenceErrorCodeSchema,
+	presenceErrorPayloadSchema,
+	presenceRequestSnapshotPayloadSchema,
+	presenceDebugRequestPayloadSchema,
+	presenceDebugDataPayloadSchema,
+	presenceUpdateMessageSchema,
+	presenceBundledUpdateMessageSchema,
+	presenceSnapshotMessageSchema,
+	presenceAnomalyMessageSchema,
+	presenceErrorMessageSchema,
+	presenceRequestSnapshotMessageSchema,
+	presenceDebugRequestMessageSchema,
+	presenceDebugDataMessageSchema
+} from './messages/presenceSchemas.js';

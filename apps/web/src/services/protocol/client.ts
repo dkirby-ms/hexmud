@@ -40,6 +40,11 @@ export interface JoinPlaceholderRoomOptions {
   protocolVersion: number;
 }
 
+export const joinWorldRoom = async (
+  client: Client,
+  options: JoinPlaceholderRoomOptions
+): Promise<Room<unknown>> => client.joinOrCreate<unknown>('world', options);
+
 export const joinPlaceholderRoom = async (
   client: Client,
   options: JoinPlaceholderRoomOptions

@@ -12,6 +12,32 @@ pnpm run bootstrap
 
 Copy `.env.example` to `.env` and update values when credentials become available. Authentication is optional during early development, but when you enable Azure Entra ID configure both the server variables (`MSAL_*`) and the client-side entries (`VITE_MSAL_CLIENT_ID`, `VITE_MSAL_AUTHORITY`, `VITE_MSAL_REDIRECT_URI`, `VITE_MSAL_SCOPES`).
 
+### Presence Configuration (Server)
+
+Populate the following environment variables to tune the presence progression feature. Defaults align with the MVP research assumptions:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PRESENCE_CAP` | `100` | Maximum presence value per hex before increments stop. |
+| `PRESENCE_FLOOR_PERCENT` | `0.10` | Minimum floor percentage (as decimal) applied to the cap. Presence never decays below `ceil(cap * floorPercent)`. |
+| `PRESENCE_DECAY_PERCENT` | `0.05` | Fractional decay percentage applied during each decay tick. |
+| `PRESENCE_INACTIVITY_MS` | `86400000` | Inactivity threshold (milliseconds) before a hex becomes eligible for decay (default 24h). |
+| `PRESENCE_INTERVAL_MS` | `10000` | Accumulation interval (milliseconds) used to validate dwell and schedule increments. |
+| `PRESENCE_REQUIRED_DWELL_FRACTION` | `0.9` | Minimum fraction of the interval a player must dwell in a hex to earn an increment. |
+
+Configure these alongside the existing MSAL variables in `apps/server/.env`. The client does not require additional configuration for presence during Phase 1.
+
+### Database Configuration (Server)
+
+Presence persistence relies on PostgreSQL. Provide the following environment variables when booting the server:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | _(required)_ | PostgreSQL connection string used by the presence DAO. Example: `postgres://postgres:postgres@localhost:5432/hexmud`. |
+| `DATABASE_MAX_CONNECTIONS` | `10` | Optional override for the Postgres pool size (matches `pg` `max` option). |
+
+If `DATABASE_URL` is omitted, the presence world room is not registered and the server emits a warning at startup.
+
 Run the workspace test suite to confirm the toolchain is healthy:
 
 ```bash

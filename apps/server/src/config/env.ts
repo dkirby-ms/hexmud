@@ -14,6 +14,14 @@ const parseNumber = (value: string | undefined, fallback: number): number => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const parseFloatNumber = (value: string | undefined, fallback: number): number => {
+  if (!value) {
+    return fallback;
+  }
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 const parseBoolean = (value: string | undefined, fallback: boolean): boolean => {
   if (value === undefined) {
     return fallback;
@@ -53,6 +61,18 @@ export interface ServerEnv {
     refillAmount: number;
     refillIntervalMs: number;
   };
+  database: {
+    url: string | null;
+    maxConnections: number;
+  };
+  presence: {
+    cap: number;
+    floorPercent: number;
+    decayPercent: number;
+    inactivityMs: number;
+    intervalMs: number;
+    dwellFraction: number;
+  };
   msal: {
     clientId: string | null;
     tenantId: string | null;
@@ -88,6 +108,18 @@ export const env: ServerEnv = {
     capacity: parseNumber(process.env.HEARTBEAT_RATE_LIMIT_CAPACITY, 3),
     refillAmount: parseNumber(process.env.HEARTBEAT_RATE_LIMIT_REFILL_AMOUNT, 1),
     refillIntervalMs: parseNumber(process.env.HEARTBEAT_RATE_LIMIT_INTERVAL_MS, 1_000)
+  },
+  database: {
+    url: process.env.DATABASE_URL ?? null,
+    maxConnections: parseNumber(process.env.DATABASE_MAX_CONNECTIONS, 10)
+  },
+  presence: {
+    cap: parseNumber(process.env.PRESENCE_CAP, 100),
+    floorPercent: parseFloatNumber(process.env.PRESENCE_FLOOR_PERCENT, 0.1),
+    decayPercent: parseFloatNumber(process.env.PRESENCE_DECAY_PERCENT, 0.05),
+    inactivityMs: parseNumber(process.env.PRESENCE_INACTIVITY_MS, 86_400_000),
+    intervalMs: parseNumber(process.env.PRESENCE_INTERVAL_MS, 10_000),
+    dwellFraction: parseFloatNumber(process.env.PRESENCE_REQUIRED_DWELL_FRACTION, 0.9)
   },
   msal: {
     clientId: process.env.MSAL_CLIENT_ID ?? null,

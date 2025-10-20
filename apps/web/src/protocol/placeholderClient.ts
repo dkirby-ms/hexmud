@@ -2,7 +2,11 @@ import { createEnvelope, PROTOCOL_VERSION } from '@hexmud/protocol';
 import type { Client, Room } from 'colyseus.js';
 
 
-import { createProtocolClient, joinPlaceholderRoom } from '../services/protocol/client.js';
+import {
+  createProtocolClient,
+  joinPlaceholderRoom,
+  joinWorldRoom
+} from '../services/protocol/client.js';
 
 export interface PlaceholderConnection {
   client: Client;
@@ -46,14 +50,41 @@ export const connectToPlaceholderWorld = async (
   const client = createProtocolClient();
 
   try {
-    const room = await joinPlaceholderRoom(client, {
+    const options = {
       protocolVersion: resolveProtocolVersion(),
       accessToken: accessToken ?? undefined
-    });
+    } as const;
+
+    const roomsToAttempt = ['world', 'placeholder'] as const;
+    let joinedRoom: Room<unknown> | null = null;
+    let lastError: unknown;
+
+    for (const roomName of roomsToAttempt) {
+      try {
+        joinedRoom =
+          roomName === 'world'
+            ? await joinWorldRoom(client, options)
+            : await joinPlaceholderRoom(client, options);
+
+        if (import.meta.env.DEV) {
+          console.info('[protocol] Joined room', roomName);
+        }
+        break;
+      } catch (error) {
+        lastError = error;
+        if (import.meta.env.DEV) {
+          console.warn('[protocol] Failed to join room', roomName, error);
+        }
+      }
+    }
+
+    if (!joinedRoom) {
+      throw lastError ?? new Error('Failed to join any room');
+    }
 
     const disconnect = async () => {
       try {
-        await room.leave(true);
+        await joinedRoom!.leave(true);
       } catch (error) {
         // If the room is already closed ignore the error
         if (import.meta.env.DEV) {
@@ -63,7 +94,7 @@ export const connectToPlaceholderWorld = async (
       closeClient(client);
     };
 
-    return { client, room, disconnect };
+    return { client, room: joinedRoom, disconnect };
   } catch (error) {
     closeClient(client);
     throw error;
