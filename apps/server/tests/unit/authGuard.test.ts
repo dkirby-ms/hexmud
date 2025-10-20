@@ -1,5 +1,5 @@
 import type { Client } from 'colyseus';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PROTOCOL_VERSION } from '@hexmud/protocol';
 
@@ -15,11 +15,6 @@ class MockAccessTokenValidationError extends Error {
   }
 }
 
-vi.mock('../../src/auth/validateToken.js', () => ({
-  validateAccessToken: validateAccessTokenMock,
-  AccessTokenValidationError: MockAccessTokenValidationError
-}));
-
 describe('join authentication guard', () => {
   let processJoinRequest: typeof import('../../src/handlers/join.js')['processJoinRequest'];
   let JoinRejectedError: typeof import('../../src/handlers/join.js')['JoinRejectedError'];
@@ -31,9 +26,18 @@ describe('join authentication guard', () => {
     process.env.MSAL_JWKS_URI = 'https://example.com/discovery/v2.0/keys';
   });
 
+  afterEach(() => {
+    vi.unmock('../../src/auth/validateToken.js');
+  });
+
   beforeEach(async () => {
+    vi.unmock('../../src/auth/validateToken.js');
     validateAccessTokenMock.mockReset();
     vi.resetModules();
+    vi.doMock('../../src/auth/validateToken.js', () => ({
+      validateAccessToken: validateAccessTokenMock,
+      AccessTokenValidationError: MockAccessTokenValidationError
+    }));
     const module = await import('../../src/handlers/join.js');
     processJoinRequest = module.processJoinRequest;
     JoinRejectedError = module.JoinRejectedError;

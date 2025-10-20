@@ -7,5 +7,9 @@
     "noEmit": true,
     "composite": true
   },
-  "include": ["./load-test.ts", "./types/**/*.d.ts"]
+  "include": ["./load-test.ts", "./types/**/*.d.ts"],
+  "references": [
+    { "path": "../packages/protocol" },
+    { "path": "../apps/server" }
+  ]
 }

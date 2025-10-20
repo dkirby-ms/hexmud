@@ -4,11 +4,15 @@ import process from 'node:process';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { PROTOCOL_VERSION } from '@hexmud/protocol';
 import { Server as ColyseusServer } from 'colyseus';
+import { Pool } from 'pg';
 import express, { type Request, type Response } from 'express';
 
 import { env } from './config/env.js';
 import { logger } from './logging/logger.js';
 import { PlaceholderRoom } from './rooms/PlaceholderRoom.js';
+import { WorldRoom } from './rooms/WorldRoom.js';
+import { PresenceDao } from './state/presenceDao.js';
+import { PresenceDecayProcessor } from './state/presenceDecayProcessor.js';
 
 export const createApp = (): express.Express => {
   const app = express();
@@ -79,6 +83,60 @@ export const start = async (): Promise<{
 
   gameServer.define('placeholder', PlaceholderRoom);
 
+  let databasePool: Pool | null = null;
+  let decayInterval: NodeJS.Timeout | null = null;
+  let decayProcessor: PresenceDecayProcessor | null = null;
+  if (env.database.url) {
+    databasePool = new Pool({
+      connectionString: env.database.url,
+      max: env.database.maxConnections
+    });
+
+    databasePool.on('error', (error) => {
+      logger.error('database.pool_error', {
+        error: error instanceof Error ? error.message : error
+      });
+    });
+
+    const presenceDao = new PresenceDao({
+      pool: databasePool,
+      now: () => new Date()
+    });
+    WorldRoom.configure({
+      presenceDao,
+      now: () => new Date()
+    });
+    gameServer.define('world', WorldRoom);
+
+    decayProcessor = new PresenceDecayProcessor({
+      presenceDao,
+      now: () => new Date(),
+      onDecay: (event) => WorldRoom.notifyDecay(event)
+    });
+
+    const decayIntervalMs = Math.max(60_000, env.presence.intervalMs);
+    decayInterval = setInterval(() => {
+      if (!decayProcessor) {
+        return;
+      }
+      void decayProcessor.runBatch().catch((error) => {
+        logger.error('presence.decay_batch_error', {
+          error: error instanceof Error ? error.message : error
+        });
+      });
+    }, decayIntervalMs);
+
+    void decayProcessor.runBatch().catch((error) => {
+      logger.error('presence.decay_batch_error', {
+        error: error instanceof Error ? error.message : error
+      });
+    });
+  } else {
+    logger.warn('presence.disabled_database_missing', {
+      reason: 'DATABASE_URL not configured'
+    });
+  }
+
   await new Promise<void>((resolve) => {
     httpServer.listen(env.port, env.host, () => resolve());
   });
@@ -94,6 +152,12 @@ export const start = async (): Promise<{
       });
     });
     await gameServer.gracefullyShutdown(false);
+    if (decayInterval) {
+      clearInterval(decayInterval);
+      decayInterval = null;
+    }
+    decayProcessor = null;
+    await databasePool?.end();
   };
 
   logger.info('server.started', {
