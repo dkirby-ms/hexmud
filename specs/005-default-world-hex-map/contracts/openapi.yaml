@@ -1,0 +1,130 @@
+openapi: 3.0.3
+info:
+  title: HexMUD Default World API (Planning-Level)
+  version: 0.1.0
+  description: |
+    Planning-level contracts for server-side world layout access. These describe
+    internal/ops APIs and are not necessarily exposed directly to game clients.
+
+paths:
+  /worlds/default:
+    get:
+      summary: Get default world metadata
+      description: Returns basic information about the default world definition and active version.
+      responses:
+        '200':
+          description: Default world metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorldDefinition'
+
+  /worlds/default/regions:
+    get:
+      summary: List regions in the default world
+      responses:
+        '200':
+          description: List of regions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorldRegion'
+
+  /worlds/default/tiles:
+    get:
+      summary: Query hex tiles by region
+      parameters:
+        - in: query
+          name: regionKey
+          schema:
+            type: string
+          required: false
+          description: Optional region key to filter tiles by region.
+      responses:
+        '200':
+          description: List of hex tiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorldHexTile'
+
+  /worlds/default/spawn-regions:
+    get:
+      summary: List spawn regions in the default world
+      responses:
+        '200':
+          description: List of spawn regions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorldSpawnRegion'
+
+components:
+  schemas:
+    WorldDefinition:
+      type: object
+      properties:
+        worldKey:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        version:
+          type: string
+        boundaryPolicy:
+          type: string
+
+    WorldRegion:
+      type: object
+      properties:
+        regionKey:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [continent, ocean, island_chain, other]
+        description:
+          type: string
+          nullable: true
+
+    WorldHexTile:
+      type: object
+      properties:
+        q:
+          type: integer
+        r:
+          type: integer
+        terrain:
+          type: string
+          enum: [land, ocean, coastal, island, blocked]
+        navigable:
+          type: boolean
+        regionKey:
+          type: string
+        label:
+          type: string
+          nullable: true
+
+    WorldSpawnRegion:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        regionKey:
+          type: string
+        minDistanceFromEdge:
+          type: number
+          format: float
+          nullable: true

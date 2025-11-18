@@ -33,6 +33,7 @@ import { PresenceDao } from '../../src/state/presenceDao.js';
 import type { PresenceDecayState } from '../../src/state/presenceTypes.js';
 import { getPresenceTierConfig, resetPresenceTierConfig } from '../../src/state/presenceTiers.js';
 import { createPresenceTestClock } from '../helpers/presence.js';
+import { loadTestWorld } from '../helpers/world.js';
 
 interface FakeRow {
   player_id: string;
@@ -223,6 +224,7 @@ describe('presence cap integration', () => {
 
   it('emits cap update and metric when presence reaches the configured cap', async () => {
     const clock = createPresenceTestClock(Date.UTC(2025, 0, 1));
+    await loadTestWorld();
     const pool = new FakePool();
     const dao = new PresenceDao({
       pool: pool as unknown as Pool,

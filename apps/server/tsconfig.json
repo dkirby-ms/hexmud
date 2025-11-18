@@ -5,7 +5,8 @@
     "rootDir": ".",
     "outDir": "dist",
     "types": ["node", "vitest"],
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "skipLibCheck": true
   },
   "include": ["src", "tests"],
   "references": [

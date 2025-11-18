@@ -141,6 +141,34 @@ export const logger: Logger = {
 
 export type { Logger };
 
+export interface WorldVersionLogContext {
+  worldKey: string;
+  version: number | string;
+  regionCount: number;
+  tileCount: number;
+}
+
+export const logWorldVersionMetadata = (context: WorldVersionLogContext): void => {
+  const numericVersion = typeof context.version === 'number' ? context.version : Number(context.version);
+  const versionIsNumeric = Number.isFinite(numericVersion);
+
+  logger.info('world.default.version.active', {
+    worldKey: context.worldKey,
+    version: context.version,
+    regionCount: context.regionCount,
+    tileCount: context.tileCount,
+    versionIsNumeric,
+    numericVersion: versionIsNumeric ? numericVersion : undefined
+  });
+
+  if (!versionIsNumeric) {
+    logger.warn('world.default.version.invalid', {
+      worldKey: context.worldKey,
+      rawVersion: context.version
+    });
+  }
+};
+
 export const loggingContext = {
   withCorrelationId: async <T>(correlationId: string, fn: () => Promise<T> | T): Promise<T> =>
     correlationStore.run(correlationId, () => Promise.resolve(fn())),

@@ -1,5 +1,8 @@
 import type { Pool, PoolClient, QueryResultRow } from 'pg';
 
+import { parseHexId } from '../world/hexId.js';
+import { getHexTile, isWorldLoaded } from '../world/index.js';
+
 import { createInitialPresenceRecord } from './presenceLifecycle.js';
 import type { PlayerPresenceRecord, PresenceDecayState } from './presenceTypes.js';
 
@@ -34,6 +37,22 @@ const mapRowToRecord = (row: PresenceRow): PlayerPresenceRecord => ({
   lastVisitedAt: mapTimestamp(row.last_visited_at),
   lastIncrementAt: mapTimestamp(row.last_increment_at)
 });
+
+const assertWorldTileExists = (hexId: string): void => {
+  const coordinate = parseHexId(hexId);
+  if (!coordinate) {
+    throw new Error(`Cannot create presence record for invalid hexId "${hexId}"`);
+  }
+
+  if (!isWorldLoaded()) {
+    return;
+  }
+
+  const tile = getHexTile(coordinate.q, coordinate.r);
+  if (!tile) {
+    throw new Error(`Cannot create presence record for undefined world hex "${hexId}"`);
+  }
+};
 
 export class PresenceDao {
   private readonly pool: Pool;
@@ -135,6 +154,8 @@ export class PresenceDao {
     if (existing) {
       return existing;
     }
+
+    assertWorldTileExists(hexId);
 
     const initial = createInitialPresenceRecord({
       playerId,

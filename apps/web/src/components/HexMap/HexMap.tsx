@@ -53,7 +53,7 @@ const formatTimestamp = (timestamp?: number): string | undefined => {
   }
   try {
     return new Date(timestamp).toISOString();
-  } catch (error) {
+  } catch {
     return undefined;
   }
 };

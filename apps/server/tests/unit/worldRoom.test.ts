@@ -35,6 +35,7 @@ import { PresenceDao } from '../../src/state/presenceDao.js';
 import type { PresenceDecayState, PlayerPresenceRecord } from '../../src/state/presenceTypes.js';
 import { resetPresenceTierConfig } from '../../src/state/presenceTiers.js';
 import { createPresenceTestClock } from '../helpers/presence.js';
+import { loadTestWorld } from '../helpers/world.js';
 
 interface FakeRow {
   player_id: string;
@@ -195,10 +196,11 @@ describe('WorldRoom presence flow', () => {
     });
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     metricsEvents = [];
     installMetricsSpy();
     resetPresenceTierConfig();
+    await loadTestWorld();
   });
 
   afterEach(() => {
@@ -380,6 +382,148 @@ describe('WorldRoom presence flow', () => {
       playerId: 'player-metrics'
     });
 
+    room.onDispose();
+  });
+
+  it('rejects movement samples that target unknown coordinates', async () => {
+    const clock = createPresenceTestClock(Date.UTC(2025, 0, 1));
+    const pool = new FakePool();
+    const dao = new PresenceDao({
+      pool: pool as unknown as Pool,
+      now: () => new Date(clock.now())
+    });
+    WorldRoom.configure({
+      presenceDao: dao,
+      now: () => new Date(clock.now())
+    });
+
+    const room = new WorldRoom();
+    room.onCreate();
+
+    const client = new MockClient('session-boundary');
+    await room.onJoin(client as unknown as import('colyseus').Client, {
+      playerId: 'player-boundary',
+      protocolVersion: env.protocolVersion
+    });
+
+    await room.recordMovementSample(client.sessionId, 'hex:999:999');
+
+    const lastMessage = client.messages.at(-1);
+    expect(lastMessage?.type).toBe('envelope');
+    const envelope = lastMessage?.payload as {
+      type: string;
+      payload: { code: string; message: string };
+    };
+    expect(envelope?.type).toBe('presence:error');
+    expect(envelope?.payload.code).toBe('NOT_FOUND');
+    expect(envelope?.payload.message).toContain('hex:999:999');
+
+    expect(pool.get('player-boundary', 'hex:999:999')).toBeUndefined();
+
+    const boundaryMetric = metricsEvents.find(
+      (event) => event.name === 'world_boundary_move_rejections_total'
+    );
+    expect(boundaryMetric).toBeDefined();
+    expect(boundaryMetric?.dimensions).toMatchObject({
+      reason: 'tile_not_found',
+      playerId: 'player-boundary'
+    });
+
+    room.onLeave(client as unknown as import('colyseus').Client);
+    room.onDispose();
+  });
+
+  it('rejects movement samples on non-navigable tiles', async () => {
+    const clock = createPresenceTestClock(Date.UTC(2025, 0, 1));
+    const pool = new FakePool();
+    const dao = new PresenceDao({
+      pool: pool as unknown as Pool,
+      now: () => new Date(clock.now())
+    });
+    WorldRoom.configure({
+      presenceDao: dao,
+      now: () => new Date(clock.now())
+    });
+
+    const room = new WorldRoom();
+    room.onCreate();
+
+    const client = new MockClient('session-blocked');
+    await room.onJoin(client as unknown as import('colyseus').Client, {
+      playerId: 'player-blocked',
+      protocolVersion: env.protocolVersion
+    });
+
+    await room.recordMovementSample(client.sessionId, 'hex:0:0');
+
+    const lastMessage = client.messages.at(-1);
+    expect(lastMessage?.type).toBe('envelope');
+    const envelope = lastMessage?.payload as {
+      type: string;
+      payload: { code: string; message: string };
+    };
+    expect(envelope?.type).toBe('presence:error');
+    expect(envelope?.payload.code).toBe('DENIED');
+    expect(envelope?.payload.message).toContain('hex:0:0');
+
+    expect(pool.get('player-blocked', 'hex:0:0')).toBeUndefined();
+
+    const boundaryMetric = metricsEvents.find(
+      (event) => event.name === 'world_boundary_move_rejections_total'
+    );
+    expect(boundaryMetric).toBeDefined();
+    expect(boundaryMetric?.dimensions).toMatchObject({
+      reason: 'tile_not_navigable',
+      playerId: 'player-blocked'
+    });
+
+    room.onLeave(client as unknown as import('colyseus').Client);
+    room.onDispose();
+  });
+
+  it('rejects movement samples with invalid hex identifiers', async () => {
+    const clock = createPresenceTestClock(Date.UTC(2025, 0, 1));
+    const pool = new FakePool();
+    const dao = new PresenceDao({
+      pool: pool as unknown as Pool,
+      now: () => new Date(clock.now())
+    });
+    WorldRoom.configure({
+      presenceDao: dao,
+      now: () => new Date(clock.now())
+    });
+
+    const room = new WorldRoom();
+    room.onCreate();
+
+    const client = new MockClient('session-invalid');
+    await room.onJoin(client as unknown as import('colyseus').Client, {
+      playerId: 'player-invalid',
+      protocolVersion: env.protocolVersion
+    });
+
+    await room.recordMovementSample(client.sessionId, 'not-a-hex');
+
+    const lastMessage = client.messages.at(-1);
+    expect(lastMessage?.type).toBe('envelope');
+    const envelope = lastMessage?.payload as {
+      type: string;
+      payload: { code: string; message: string };
+    };
+    expect(envelope?.type).toBe('presence:error');
+    expect(envelope?.payload.code).toBe('INVALID_PAYLOAD');
+    expect(envelope?.payload.message).toContain('not-a-hex');
+
+    const boundaryMetric = metricsEvents.find(
+      (event) => event.name === 'world_boundary_move_rejections_total'
+    );
+    expect(boundaryMetric).toBeDefined();
+    expect(boundaryMetric?.dimensions).toMatchObject({
+      reason: 'invalid_hex_id',
+      playerId: 'player-invalid'
+    });
+
+    room.onLeave(client as unknown as import('colyseus').Client);
     room.onDispose();
   });
 });

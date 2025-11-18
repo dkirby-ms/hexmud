@@ -100,8 +100,10 @@ export const useAuth = (): UseAuthResult => {
   const renewalStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const renewalRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const renewalAttemptRef = useRef(0);
-  const scheduleRenewalRef = useRef<(expiresOn: Date | null | undefined) => void>(() => {});
-  const attemptRenewalRef = useRef<(attempt: number) => void>(() => {});
+  const scheduleRenewalRef = useRef<
+    ((expiresOn: Date | null | undefined) => void) | null
+  >(null);
+  const attemptRenewalRef = useRef<((attempt: number) => Promise<void>) | null>(null);
 
   const clearRenewalTimers = useCallback(() => {
     if (renewalStartTimerRef.current) {
@@ -143,7 +145,7 @@ export const useAuth = (): UseAuthResult => {
 
       renewalStartTimerRef.current = setTimeout(() => {
         renewalAttemptRef.current = 0;
-        attemptRenewalRef.current?.(1);
+  void attemptRenewalRef.current?.(1);
       }, delay);
     },
     [clearRenewalTimers]
@@ -167,10 +169,10 @@ export const useAuth = (): UseAuthResult => {
       }
 
       try {
-        const result = await acquireToken(instance, account);
+          const result = await acquireToken(instance, account);
         console.info('[auth] renewal success', { attempt });
         renewalAttemptRef.current = 0;
-        if (mountedRef.current) {
+          if (mountedRef.current) {
           setState({
             status: 'authenticated',
             account,
@@ -179,7 +181,7 @@ export const useAuth = (): UseAuthResult => {
             errorCode: null
           });
         }
-        scheduleRenewalRef.current(result.expiresOn ?? null);
+          scheduleRenewalRef.current?.(result.expiresOn ?? null);
       } catch (error) {
         const reason = error instanceof Error ? error.message : 'Unknown error';
         renewalAttemptRef.current = attempt;
@@ -195,7 +197,7 @@ export const useAuth = (): UseAuthResult => {
             RENEWAL_BASE_INTERVAL_MS * Math.max(1, 2 ** (attempt - 1))
           );
           renewalRetryTimerRef.current = setTimeout(() => {
-            attemptRenewalRef.current?.(attempt + 1);
+            void attemptRenewalRef.current?.(attempt + 1);
           }, delay);
         } else {
           clearRenewalTimers();

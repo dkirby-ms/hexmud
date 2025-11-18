@@ -1,16 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { logger, loggingContext } from '../../src/logging/logger.js';
+import { logger, loggingContext, logWorldVersionMetadata } from '../../src/logging/logger.js';
 
 describe('logger correlation id support', () => {
   let logSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterEach(() => {
     logSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   it('includes correlationId when set via context helper', async () => {
@@ -75,5 +78,35 @@ describe('logger correlation id support', () => {
 
     expect(payload.notes).toMatch(/…\[truncated 44 chars]$/);
     expect(payload.notes).not.toContain(longValue);
+  });
+
+  it('logs active world version metadata and validates numeric versions', () => {
+    logSpy.mockClear();
+    warnSpy.mockClear();
+
+    logWorldVersionMetadata({
+      worldKey: 'default',
+      version: 3,
+      regionCount: 10,
+      tileCount: 100
+    });
+
+    expect(logSpy).toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('warns when world version metadata is not numeric', () => {
+    logSpy.mockClear();
+    warnSpy.mockClear();
+
+    logWorldVersionMetadata({
+      worldKey: 'default',
+      version: 'beta',
+      regionCount: 5,
+      tileCount: 50
+    });
+
+    expect(logSpy).toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalled();
   });
 });
