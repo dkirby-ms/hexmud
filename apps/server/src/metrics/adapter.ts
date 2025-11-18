@@ -1,3 +1,5 @@
+import type { WorldBoundaryRejectionReason } from '../logging/events.js';
+
 export type MetricsDimensions = Record<string, string>;
 
 export interface MetricsEvent {
@@ -245,5 +247,16 @@ export const recordHexesExploredPerSession = (
     name: 'hexes_explored_per_session',
     value: count,
     dimensions
+  });
+};
+
+export const recordWorldBoundaryRejection = (
+  reason: WorldBoundaryRejectionReason,
+  dimensions?: MetricsDimensions
+): void => {
+  fireAndForget({
+    name: 'world_boundary_move_rejections_total',
+    value: 1,
+    dimensions: { reason, ...(dimensions ?? {}) }
   });
 };

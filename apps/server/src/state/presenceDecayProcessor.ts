@@ -2,9 +2,10 @@ import type { PoolClient } from 'pg';
 
 import { incrementPresenceDecay, recordPresenceBatchDuration } from '../metrics/adapter.js';
 
-import { applyPresenceDecay } from './presenceLifecycle.js';
 import type { PresenceDao } from './presenceDao.js';
 import { createDecaySelectionQuery, mapDecayRow } from './presenceDecayQuery.js';
+import type { PresenceDecayRow } from './presenceDecayQuery.js';
+import { applyPresenceDecay } from './presenceLifecycle.js';
 import type { PlayerPresenceRecord } from './presenceTypes.js';
 
 export interface PresenceDecayEvent {
@@ -45,7 +46,9 @@ export class PresenceDecayProcessor {
     const startedAt = Date.now();
     const result = await this.presenceDao.withTransaction(async (client) => {
       const now = this.nowFn();
-      const selection = await client.query(createDecaySelectionQuery(this.batchSize, now));
+      const selection = await client.query<PresenceDecayRow>(
+        createDecaySelectionQuery(this.batchSize, now)
+      );
       if (selection.rowCount === 0) {
         return {
           processed: 0,

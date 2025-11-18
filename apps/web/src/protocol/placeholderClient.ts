@@ -1,7 +1,6 @@
 import { createEnvelope, PROTOCOL_VERSION } from '@hexmud/protocol';
 import type { Client, Room } from 'colyseus.js';
 
-
 import {
   createProtocolClient,
   joinPlaceholderRoom,
@@ -79,12 +78,30 @@ export const connectToPlaceholderWorld = async (
     }
 
     if (!joinedRoom) {
-      throw lastError ?? new Error('Failed to join any room');
+      if (lastError instanceof Error) {
+        throw lastError;
+      }
+
+      const message = (() => {
+        if (typeof lastError === 'string') {
+          return lastError;
+        }
+        if (lastError && typeof lastError === 'object') {
+          try {
+            return JSON.stringify(lastError);
+          } catch {
+            return 'Failed to join any room (unexpected object error)';
+          }
+        }
+        return 'Failed to join any room';
+      })();
+
+      throw new Error(message);
     }
 
     const disconnect = async () => {
       try {
-        await joinedRoom!.leave(true);
+        await joinedRoom.leave(true);
       } catch (error) {
         // If the room is already closed ignore the error
         if (import.meta.env.DEV) {

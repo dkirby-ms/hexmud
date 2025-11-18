@@ -4,15 +4,31 @@ import process from 'node:process';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { PROTOCOL_VERSION } from '@hexmud/protocol';
 import { Server as ColyseusServer } from 'colyseus';
-import { Pool } from 'pg';
 import express, { type Request, type Response } from 'express';
+import { Pool } from 'pg';
 
 import { env } from './config/env.js';
-import { logger } from './logging/logger.js';
+import { handleDefaultWorldMetadata } from './handlers/world/defaultWorldMetadata.js';
+import { handleListWorldRegions } from './handlers/world/listRegions.js';
+import { handleListSpawnRegions } from './handlers/world/listSpawnRegions.js';
+import { handleListWorldTiles } from './handlers/world/listTiles.js';
+import { logger, logWorldVersionMetadata } from './logging/logger.js';
 import { PlaceholderRoom } from './rooms/PlaceholderRoom.js';
 import { WorldRoom } from './rooms/WorldRoom.js';
 import { PresenceDao } from './state/presenceDao.js';
 import { PresenceDecayProcessor } from './state/presenceDecayProcessor.js';
+import { loadWorldModule } from './world/index.js';
+import { WorldRepository } from './world/repository.js';
+import { seedDefaultWorld } from './world/seedDefaultWorld.js';
+
+const isUndefinedTableError = (error: unknown): boolean =>
+  Boolean(
+    typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      typeof (error as { code?: unknown }).code === 'string' &&
+      (error as { code: string }).code === '42P01'
+  );
 
 export const createApp = (): express.Express => {
   const app = express();
@@ -29,6 +45,11 @@ export const createApp = (): express.Express => {
       protocolVersion: PROTOCOL_VERSION
     });
   });
+
+  app.get('/worlds/default', handleDefaultWorldMetadata);
+  app.get('/worlds/default/regions', handleListWorldRegions);
+  app.get('/worlds/default/tiles', handleListWorldTiles);
+  app.get('/worlds/default/spawn-regions', handleListSpawnRegions);
 
   return app;
 };
@@ -102,11 +123,69 @@ export const start = async (): Promise<{
       pool: databasePool,
       now: () => new Date()
     });
-    WorldRoom.configure({
-      presenceDao,
-      now: () => new Date()
+
+    const worldRepository = new WorldRepository({
+      pool: databasePool
     });
-    gameServer.define('world', WorldRoom);
+
+    let worldSchemaReady = true;
+    let existingWorld = null;
+    try {
+      existingWorld = await worldRepository.getWorldDefinition(env.world.key);
+    } catch (error) {
+      if (isUndefinedTableError(error)) {
+        worldSchemaReady = false;
+        logger.warn('world.default.schema_missing', {
+          worldKey: env.world.key,
+          reason: 'world_tables_not_migrated'
+        });
+      } else {
+        throw error;
+      }
+    }
+
+    if (worldSchemaReady) {
+      if (!existingWorld) {
+        const seedResult = await seedDefaultWorld({
+          pool: databasePool
+        });
+
+        if (seedResult.inserted) {
+          logger.info('world.default.seed.applied', {
+            worldKey: seedResult.worldKey,
+            regionCount: seedResult.regionCount,
+            tileCount: seedResult.tileCount,
+            spawnRegionCount: seedResult.spawnRegionCount
+          });
+        } else {
+          logger.info('world.default.seed.skipped', {
+            worldKey: seedResult.worldKey
+          });
+        }
+      }
+
+      const loadedWorld = await loadWorldModule({
+        repository: worldRepository,
+        worldKey: env.world.key,
+        logger
+      });
+      logWorldVersionMetadata({
+        worldKey: loadedWorld.definition.worldKey,
+        version: loadedWorld.definition.version,
+        regionCount: loadedWorld.regions.length,
+        tileCount: loadedWorld.tiles.length
+      });
+      WorldRoom.configure({
+        presenceDao,
+        now: () => new Date()
+      });
+      gameServer.define('world', WorldRoom);
+    } else {
+      logger.warn('world.default.disabled', {
+        worldKey: env.world.key,
+        reason: 'schema_missing'
+      });
+    }
 
     decayProcessor = new PresenceDecayProcessor({
       presenceDao,

@@ -1,3 +1,5 @@
+import type { BoundaryPolicy, HexCoordinate, TerrainType } from '../world/types.js';
+
 // Structured log event type definitions for authentication lifecycle.
 
 interface AuthLogEventBase {
@@ -162,4 +164,140 @@ export const logPresenceAnomaly = (params: {
   anomalyType: params.anomalyType,
   valueBefore: params.valueBefore,
   valueAfter: params.valueAfter
+});
+
+interface WorldLogEventBase extends Record<string, unknown> {
+  worldKey: string;
+}
+
+export type WorldLoadFailureReason =
+  | 'world_definition_not_found'
+  | 'validation_failed'
+  | 'unexpected_error';
+
+export type WorldLoadPhase = 'definition' | 'validation' | 'bootstrap';
+
+export type WorldLogEvent =
+  | (WorldLogEventBase & {
+      type: 'world.default.load.start';
+    })
+  | (WorldLogEventBase & {
+      type: 'world.default.load.success';
+      version: number;
+      tileCount: number;
+      regionCount: number;
+      spawnRegionCount: number;
+      durationMs: number;
+      validationDurationMs: number;
+    })
+  | (WorldLogEventBase & {
+      type: 'world.default.load.failure';
+      reason: WorldLoadFailureReason;
+      durationMs: number;
+      phase: WorldLoadPhase;
+      validationErrorCount?: number;
+      error?: string;
+    })
+  | (WorldLogEventBase & {
+      type: 'world.default.validation.error';
+      errors: string[];
+      errorCount: number;
+      durationMs: number;
+    })
+  | (WorldLogEventBase & {
+      type: 'world.default.boundary.moveRejected';
+      boundaryPolicy: BoundaryPolicy;
+      playerId: string;
+      sessionId: string;
+      hexId: string;
+      reason: WorldBoundaryRejectionReason;
+      coordinate?: HexCoordinate;
+      regionId?: number;
+      terrain?: TerrainType;
+      worldVersion?: number;
+    });
+
+export type WorldLogEventType = WorldLogEvent['type'];
+
+export type WorldBoundaryRejectionReason =
+  | 'invalid_hex_id'
+  | 'tile_not_found'
+  | 'tile_not_navigable';
+
+export const logWorldLoadStart = (params: { worldKey: string }): WorldLogEvent => ({
+  type: 'world.default.load.start',
+  worldKey: params.worldKey
+});
+
+export const logWorldLoadSuccess = (params: {
+  worldKey: string;
+  version: number;
+  tileCount: number;
+  regionCount: number;
+  spawnRegionCount: number;
+  durationMs: number;
+  validationDurationMs: number;
+}): WorldLogEvent => ({
+  type: 'world.default.load.success',
+  worldKey: params.worldKey,
+  version: params.version,
+  tileCount: params.tileCount,
+  regionCount: params.regionCount,
+  spawnRegionCount: params.spawnRegionCount,
+  durationMs: params.durationMs,
+  validationDurationMs: params.validationDurationMs
+});
+
+export const logWorldLoadFailure = (params: {
+  worldKey: string;
+  reason: WorldLoadFailureReason;
+  durationMs: number;
+  phase: WorldLoadPhase;
+  validationErrorCount?: number;
+  error?: string;
+}): WorldLogEvent => ({
+  type: 'world.default.load.failure',
+  worldKey: params.worldKey,
+  reason: params.reason,
+  durationMs: params.durationMs,
+  phase: params.phase,
+  validationErrorCount: params.validationErrorCount,
+  error: params.error
+});
+
+export const logWorldValidationError = (params: {
+  worldKey: string;
+  errors: string[];
+  durationMs: number;
+}): WorldLogEvent => ({
+  type: 'world.default.validation.error',
+  worldKey: params.worldKey,
+  errors: params.errors,
+  errorCount: params.errors.length,
+  durationMs: params.durationMs
+});
+
+export const logWorldBoundaryMoveRejected = (params: {
+  worldKey: string;
+  boundaryPolicy: BoundaryPolicy;
+  playerId: string;
+  sessionId: string;
+  hexId: string;
+  reason: WorldBoundaryRejectionReason;
+  coordinate?: HexCoordinate;
+  regionId?: number;
+  terrain?: TerrainType;
+  worldVersion?: number;
+}): WorldLogEvent => ({
+  type: 'world.default.boundary.moveRejected',
+  worldKey: params.worldKey,
+  boundaryPolicy: params.boundaryPolicy,
+  playerId: params.playerId,
+  sessionId: params.sessionId,
+  hexId: params.hexId,
+  reason: params.reason,
+  coordinate: params.coordinate,
+  regionId: params.regionId,
+  terrain: params.terrain,
+  worldVersion: params.worldVersion
 });

@@ -84,6 +84,10 @@ export interface ServerEnv {
       name: string | null;
     };
   };
+  world: {
+    key: string;
+    boundaryPolicy: 'hard-edge';
+  };
 }
 
 const authority = trimTrailingSlash(process.env.MSAL_AUTHORITY ?? null);
@@ -91,7 +95,7 @@ const jwksUriOverride = process.env.MSAL_JWKS_URI ?? null;
 const apiAudience = process.env.MSAL_API_AUDIENCE ?? null;
 const requiredScopeFull = process.env.MSAL_REQUIRED_SCOPE ?? null;
 const requiredScopeName = requiredScopeFull
-  ? requiredScopeFull.split('/').slice(-1)[0] || null
+  ? requiredScopeFull.split('/').slice(-1)[0] ?? null
   : null;
 
 export const env: ServerEnv = {
@@ -131,6 +135,10 @@ export const env: ServerEnv = {
       full: requiredScopeFull,
       name: requiredScopeName
     }
+  },
+  world: {
+    key: process.env.WORLD_KEY ?? 'default',
+    boundaryPolicy: 'hard-edge'
   }
 };
 

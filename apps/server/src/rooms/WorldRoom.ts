@@ -3,7 +3,7 @@ import {
   errorCodeSchema,
   heartbeatPayloadSchema,
   presenceRequestSnapshotPayloadSchema,
-  type PresenceRequestSnapshotPayload,
+  type PresenceErrorPayload,
   type PresenceSnapshotEntry
 } from '@hexmud/protocol';
 import type { Client } from 'colyseus';
@@ -16,42 +16,47 @@ import {
   type JoinOptions
 } from '../handlers/join.js';
 import {
+  logPresenceAnomaly,
   logPresenceCapReached,
   logPresenceCreate,
   logPresenceDecay,
   logPresenceIncrement,
   logPresenceTierTransition,
-  logPresenceAnomaly
+  logWorldBoundaryMoveRejected
 } from '../logging/events.js';
+import type { WorldBoundaryRejectionReason } from '../logging/events.js';
 import { logger, loggingContext } from '../logging/logger.js';
 import {
-  incrementPresenceCreate,
-  incrementPresenceIncrement,
   incrementPresenceAnomaly,
   incrementPresenceAnomalyEvaluation,
+  incrementPresenceCreate,
+  incrementPresenceIncrement,
   recordHexesExploredPerSession,
   recordPresenceAnomalyRatio,
+  recordPresenceBatchDuration,
   recordPresenceCapEvent,
   recordPresenceIncrementsPerTick,
   recordPresenceUpdateLatency,
-  recordPresenceBatchDuration
+  recordWorldBoundaryRejection
 } from '../metrics/adapter.js';
-import type { PresenceDao } from '../state/presenceDao.js';
-import { canIncrementPresence } from '../state/presenceEligibility.js';
-import { applyPresenceIncrement } from '../state/presenceLifecycle.js';
-import { detectTierTransition } from '../state/presenceTierTransition.js';
-import type { PlayerPresenceRecord } from '../state/presenceTypes.js';
-import type { PresenceDecayEvent } from '../state/presenceDecayProcessor.js';
+import { HeartbeatRateLimiter } from '../ratelimit/heartbeat.js';
 import {
   PresenceAnomalyDetector,
   type PresenceAnomalyDetection
 } from '../ratelimit/presenceAnomaly.js';
+import type { PresenceDao } from '../state/presenceDao.js';
+import type { PresenceDecayEvent } from '../state/presenceDecayProcessor.js';
+import { canIncrementPresence } from '../state/presenceEligibility.js';
+import { applyPresenceIncrement } from '../state/presenceLifecycle.js';
+import { detectTierTransition } from '../state/presenceTierTransition.js';
+import type { PlayerPresenceRecord } from '../state/presenceTypes.js';
 import { rooms } from '../state/rooms.js';
 import { sessions } from '../state/sessions.js';
 import type { MessageValidationError } from '../validation/validateMessage.js';
 import { validateMessage } from '../validation/validateMessage.js';
-
-import { HeartbeatRateLimiter } from '../ratelimit/heartbeat.js';
+import { parseHexId } from '../world/hexId.js';
+import { getHexTile, getWorldState, isWorldLoaded } from '../world/index.js';
+import type { HexCoordinate, WorldHexTile } from '../world/types.js';
 
 import { presenceReplay } from './presenceReplay.js';
 
@@ -88,6 +93,11 @@ interface SessionRuntimeState {
   dwellStartedAtMs: number | null;
   lastSampleAtMs: number | null;
   exploredHexes: Set<string>;
+}
+
+interface MovementRejectionContext {
+  coordinate?: HexCoordinate;
+  tile?: WorldHexTile;
 }
 
 interface WorldRoomDependencies {
@@ -301,6 +311,11 @@ export class WorldRoom extends Room<PresenceState> {
       return;
     }
 
+    const isValidMovement = this.validateMovementTarget(session, hexId);
+    if (!isValidMovement) {
+      return;
+    }
+
     const now = this.nowFn();
     const nowMs = now.getTime();
 
@@ -333,6 +348,106 @@ export class WorldRoom extends Room<PresenceState> {
     this.updateSummaryEntry(persisted);
   }
 
+  private validateMovementTarget(session: SessionRuntimeState, hexId: string): boolean {
+    const coordinate = parseHexId(hexId);
+    if (!coordinate) {
+      this.handleMovementRejection(session, hexId, 'invalid_hex_id');
+      return false;
+    }
+
+    if (!isWorldLoaded()) {
+      logger.warn('room.world.movement_validation_skipped', {
+        reason: 'world_not_loaded',
+        hexId,
+        sessionId: session.sessionId,
+        playerId: session.playerId
+      });
+      return true;
+    }
+
+    const tile: WorldHexTile | undefined = getHexTile(coordinate.q, coordinate.r);
+
+    if (!tile) {
+      this.handleMovementRejection(session, hexId, 'tile_not_found', { coordinate });
+      return false;
+    }
+
+    if (!tile.navigable) {
+      this.handleMovementRejection(session, hexId, 'tile_not_navigable', {
+        coordinate,
+        tile
+      });
+      return false;
+    }
+
+    return true;
+  }
+
+  private handleMovementRejection(
+    session: SessionRuntimeState,
+    hexId: string,
+    reason: WorldBoundaryRejectionReason,
+    context: MovementRejectionContext = {}
+  ): void {
+    recordWorldBoundaryRejection(reason, {
+      roomId: this.roomId,
+      sessionId: session.sessionId,
+      playerId: session.playerId
+    });
+
+    this.sendMovementRejectionFeedback(session, hexId, reason);
+
+    const world = getWorldState();
+    const logEvent = logWorldBoundaryMoveRejected({
+      worldKey: world.definition.worldKey,
+      boundaryPolicy: world.definition.boundaryPolicy,
+      playerId: session.playerId,
+      sessionId: session.sessionId,
+      hexId,
+      reason,
+      coordinate: context.coordinate,
+      regionId: context.tile?.regionId,
+      terrain: context.tile?.terrain,
+      worldVersion: world.definition.version
+    });
+    logger.warn(logEvent.type, logEvent);
+  }
+
+  private sendMovementRejectionFeedback(
+    session: SessionRuntimeState,
+    hexId: string,
+    reason: WorldBoundaryRejectionReason
+  ): void {
+    const client = this.clientsBySession.get(session.sessionId);
+    if (!client) {
+      return;
+    }
+
+    const payload = this.createMovementRejectionPayload(hexId, reason);
+    client.send('envelope', createEnvelope('presence:error', payload));
+  }
+
+  private createMovementRejectionPayload(hexId: string, reason: WorldBoundaryRejectionReason): PresenceErrorPayload {
+    if (reason === 'invalid_hex_id') {
+      return {
+        code: 'INVALID_PAYLOAD',
+        message: `Movement rejected: "${hexId}" is not a valid hex identifier.`
+      };
+    }
+
+    if (reason === 'tile_not_found') {
+      return {
+        code: 'NOT_FOUND',
+        message: `Movement rejected: ${hexId} is outside the known default world.`
+      };
+    }
+
+    return {
+      code: 'DENIED',
+      message: `Movement rejected: ${hexId} cannot be entered.`
+    };
+  }
+
   private async handleEnvelopeMessage(client: Client, raw: unknown): Promise<void> {
     try {
       const { envelope, payload } = validateMessage(raw);
@@ -357,8 +472,8 @@ export class WorldRoom extends Room<PresenceState> {
       }
 
       if (envelope.type === 'presence:requestSnapshot') {
-        const request = presenceRequestSnapshotPayloadSchema.parse(payload);
-        await this.handlePresenceSnapshotRequest(client, request);
+        presenceRequestSnapshotPayloadSchema.parse(payload);
+        await this.handlePresenceSnapshotRequest(client);
         return;
       }
 
@@ -389,10 +504,7 @@ export class WorldRoom extends Room<PresenceState> {
     }
   }
 
-  private async handlePresenceSnapshotRequest(
-    client: Client,
-    _request: PresenceRequestSnapshotPayload
-  ): Promise<void> {
+  private async handlePresenceSnapshotRequest(client: Client): Promise<void> {
     const session = this.sessionState.get(client.sessionId);
     if (!session) {
       client.send(

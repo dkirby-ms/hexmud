@@ -1,0 +1,92 @@
+{
+  "world": {
+    "worldKey": "default",
+    "name": "HexMUD Default World",
+    "description": "Twin continents separated by the Azure Expanse with the Mistral Isles between them.",
+    "version": 1,
+    "boundaryPolicy": "hard-edge"
+  },
+  "regions": [
+    {
+      "regionKey": "continent_a",
+      "name": "Aurora Continent",
+      "type": "continent",
+      "description": "Temperate highlands where new players begin.",
+      "tiles": [
+        { "q": -4, "r": 0, "terrain": "land", "navigable": true, "label": "Aurora Keep" },
+        { "q": -4, "r": 1, "terrain": "land", "navigable": true },
+        { "q": -3, "r": -1, "terrain": "land", "navigable": true },
+        { "q": -3, "r": 0, "terrain": "land", "navigable": true },
+        { "q": -3, "r": 1, "terrain": "coastal", "navigable": true },
+        { "q": -2, "r": -2, "terrain": "land", "navigable": true },
+        { "q": -2, "r": -1, "terrain": "land", "navigable": true },
+        { "q": -2, "r": 0, "terrain": "coastal", "navigable": true },
+        { "q": -1, "r": -2, "terrain": "coastal", "navigable": true }
+      ]
+    },
+    {
+      "regionKey": "ocean_main",
+      "name": "Azure Expanse",
+      "type": "ocean",
+      "description": "Cold waters separating Aurora from Zephyr.",
+      "tiles": [
+        { "q": -1, "r": -1, "terrain": "ocean", "navigable": true },
+        { "q": -1, "r": 0, "terrain": "ocean", "navigable": true },
+        { "q": -1, "r": 1, "terrain": "ocean", "navigable": true },
+        { "q": 0, "r": -1, "terrain": "ocean", "navigable": true },
+        { "q": 0, "r": 0, "terrain": "blocked", "navigable": false, "label": "Maelstrom Gyre" },
+        { "q": 0, "r": 1, "terrain": "ocean", "navigable": true },
+        { "q": 1, "r": -2, "terrain": "ocean", "navigable": true },
+        { "q": 1, "r": -1, "terrain": "ocean", "navigable": true },
+        { "q": 1, "r": 0, "terrain": "ocean", "navigable": false },
+        { "q": 1, "r": -3, "terrain": "ocean", "navigable": true }
+      ]
+    },
+    {
+      "regionKey": "island_chain_mistral",
+      "name": "Mistral Isles",
+      "type": "island_chain",
+      "description": "Volcanic islands that provide a path between continents.",
+      "tiles": [
+        { "q": 1, "r": 1, "terrain": "island", "navigable": true, "label": "Windcut Cay" },
+        { "q": 1, "r": 3, "terrain": "island", "navigable": true },
+        { "q": 2, "r": 2, "terrain": "island", "navigable": true },
+        { "q": 1, "r": 2, "terrain": "coastal", "navigable": true },
+        { "q": 0, "r": 2, "terrain": "coastal", "navigable": true }
+      ]
+    },
+    {
+      "regionKey": "continent_b",
+      "name": "Zephyr Continent",
+      "type": "continent",
+      "description": "Arid mesas and crystalline coasts east of the Azure Expanse.",
+      "tiles": [
+        { "q": 2, "r": -1, "terrain": "coastal", "navigable": true },
+        { "q": 2, "r": 0, "terrain": "land", "navigable": true },
+        { "q": 2, "r": 1, "terrain": "land", "navigable": true },
+        { "q": 3, "r": -1, "terrain": "coastal", "navigable": true, "label": "Zephyr Gate" },
+        { "q": 3, "r": 0, "terrain": "land", "navigable": true },
+        { "q": 3, "r": 1, "terrain": "land", "navigable": true },
+        { "q": 4, "r": -1, "terrain": "land", "navigable": true },
+        { "q": 4, "r": 0, "terrain": "land", "navigable": true },
+        { "q": 4, "r": 1, "terrain": "coastal", "navigable": true },
+        { "q": 5, "r": 0, "terrain": "land", "navigable": true },
+        { "q": 5, "r": -1, "terrain": "coastal", "navigable": true }
+      ]
+    }
+  ],
+  "spawnRegions": [
+    {
+      "name": "Aurora Landing",
+      "regionKey": "continent_a",
+      "description": "Sheltered plateau overlooking the Aurora Keep.",
+      "minDistanceFromEdge": 1
+    },
+    {
+      "name": "Zephyr Caravanserai",
+      "regionKey": "continent_b",
+      "description": "Fallback spawn for operators when testing the eastern continent.",
+      "minDistanceFromEdge": 1
+    }
+  ]
+}

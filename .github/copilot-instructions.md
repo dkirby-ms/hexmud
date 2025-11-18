@@ -6,6 +6,7 @@ Auto-generated from all feature plans. Last updated: 2025-10-10
 - TypeScript (strict) on Node.js 22 LTS (>=22.x) + Colyseus 0.16.5 (server + schema), Vite (React SPA), MSAL (@azure/msal-browser for SPA, @azure/msal-node optional future confidential extensions), Zod (message validation), pnpm workspaces, concurrently / turbo (task orchestration) (001-monorepo-framework-for)
 - TypeScript (strict) Node.js 22 LTS (repo standard) + Colyseus (rooms/state sync), Zod (message validation), React + Vite (web UX), Logging (existing logger), Future: PostgreSQL (persistence), Redis (optional for decay batching) (004-hex-presence-progression)
 - PostgreSQL (PlayerPresenceRecord table), Redis (optional ephemeral decay scheduling keys) (004-hex-presence-progression)
+- PostgreSQL for authoritative world layout (`WorldDefinition`, `WorldRegion`, `WorldHexTile`, `WorldSpawnRegion` tables). Redis is not used directly by this feature. (005-default-world-hex-map)
 
 ## Project Structure
 ```
@@ -31,10 +32,10 @@ pnpm build          # (future) build shared packages
 TypeScript (strict) on Node.js 22 LTS (>=22.x): Follow standard conventions
 
 ## Recent Changes
+- 005-default-world-hex-map: Added TypeScript (strict) on Node.js 22 LTS
 - 004-hex-presence-progression: Added TypeScript (strict) Node.js 22 LTS (repo standard) + Colyseus (rooms/state sync), Zod (message validation), React + Vite (web UX), Logging (existing logger), Future: PostgreSQL (persistence), Redis (optional for decay batching)
 - 001-monorepo-framework-for: Added TypeScript (strict) on Node.js 22 LTS (>=22.x) + Colyseus 0.16.5 (server + schema), Vite (React SPA), MSAL (@azure/msal-browser for SPA, @azure/msal-node optional future confidential extensions), Zod (message validation), pnpm workspaces, concurrently / turbo (task orchestration)
 
 <!-- MANUAL ADDITIONS START -->
 Monorepo Notes:
-- Use pnpm workspaces; do not introduce new packages unless they provide reusable logic consumed by at least two apps.
 <!-- MANUAL ADDITIONS END -->

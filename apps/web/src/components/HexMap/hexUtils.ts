@@ -93,7 +93,7 @@ export const computeCanvasLayout = (
   }
 
   const hexWidth = Math.sqrt(3) * hexSize;
-  const working: Array<{ hexId: string; x: number; y: number }> = [];
+  const working: { hexId: string; x: number; y: number }[] = [];
   let minX = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;

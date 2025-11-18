@@ -30,6 +30,17 @@ These variables are consumed by `apps/server/src/config/env.ts`. The load-test h
 - **Replay Harness**: The presence replay (`apps/server/src/rooms/presenceReplay.ts`) captures `create`, `increment`, `cap`, and `decay` events. When tuning thresholds, regenerate replay samples to keep regression runs aligned.
 - **Client Expectations**: Any reduction of `PRESENCE_CAP` should be communicated to client teams so UI gradients remain calibrated. The web legend (`apps/web/src/components/HexMap/HexLegend.tsx`) reads tier configuration from the snapshot payload.
 
+## Default World Data Storage
+
+Presence progression depends on the existence of the bundled default world layout introduced by the "Default World Base Map" feature. The authoritative schema is created by the migration at `apps/server/src/migrations/005_default_world_base_map.sql`, which adds:
+
+- `world_definition`: Holds the single active world row (`world_key = "default"`, version, boundary policy).
+- `world_region`: Lists continents, oceans, and island chains tied to the default world.
+- `world_hex_tile`: Stores every hex coordinate (axial `q,r`), terrain classification, and navigability flag.
+- `world_spawn_region`: Marks safe spawn areas that presence metrics treat as valid origins for new players.
+
+Fresh deployments must run this migration (or later ones that supersede it) before enabling presence. Seed data is loaded via `apps/server/src/world/seedDefaultWorld.ts`, and runtime services consume the read-only helpers in `apps/server/src/world/`. If any of these tables are missing or empty, presence recording will fail with "unknown tile" validation errors even though the progression code is otherwise healthy.
+
 ## Verification Checklist
 
 1. Update `.env` or deployment secret store with the new values.

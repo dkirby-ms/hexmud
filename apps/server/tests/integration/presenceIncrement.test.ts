@@ -1,11 +1,12 @@
 import type { Pool } from 'pg';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { canIncrementPresence } from '../../src/state/presenceEligibility.js';
 import { applyPresenceIncrement } from '../../src/state/presenceLifecycle.js';
 import { PresenceDao } from '../../src/state/presenceDao.js';
 import type { PresenceDecayState } from '../../src/state/presenceTypes.js';
 import { resetPresenceTierConfig } from '../../src/state/presenceTiers.js';
+import { loadTestWorld } from '../helpers/world.js';
 
 interface FakeRow {
   player_id: string;
@@ -100,6 +101,10 @@ class FakePool {
 }
 
 describe('presence increment integration', () => {
+  beforeAll(async () => {
+    await loadTestWorld();
+  });
+
   beforeEach(() => {
     resetPresenceTierConfig();
   });

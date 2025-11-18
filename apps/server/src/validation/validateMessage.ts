@@ -23,7 +23,7 @@ export function validateMessage<TPayload>(raw: unknown, schema?: z.ZodType<TPayl
     throw new MessageValidationError('Invalid message envelope', envelopeResult.error.flatten());
   }
 
-  const envelope = enforceProtocolVersion(envelopeResult.data);
+  const envelope = enforceProtocolVersion(envelopeResult.data as Envelope<unknown>);
 
   if (!schema) {
     return { envelope, payload: envelope.payload };

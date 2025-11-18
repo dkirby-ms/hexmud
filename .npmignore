@@ -1,0 +1,18 @@
+# Files and folders excluded from npm packages
+node_modules/
+.pnpm/
+.pnpm-store/
+dist/
+build/
+coverage/
+logs/
+*.log
+*.tsbuildinfo
+.env
+.env.*
+.vscode/
+.idea/
+specs/
+docs/
+tmp/
+.DS_Store

@@ -12,7 +12,7 @@ export interface PresenceTierConfig {
   tiers: PresenceTierDefinition[];
 }
 
-const tierLabels: Array<{ label: string; colorHint: string }> = [
+const tierLabels: { label: string; colorHint: string }[] = [
   { label: 'Trace', colorHint: '#E6F4FF' },
   { label: 'Footing', colorHint: '#C7E2FF' },
   { label: 'Influence', colorHint: '#8FB7FF' },
@@ -69,12 +69,8 @@ const computePresenceTierConfig = (): PresenceTierConfig => {
   };
 };
 
-export const getPresenceTierConfig = (): PresenceTierConfig => {
-  if (!cachedConfig) {
-    cachedConfig = computePresenceTierConfig();
-  }
-  return cachedConfig;
-};
+export const getPresenceTierConfig = (): PresenceTierConfig =>
+  (cachedConfig ??= computePresenceTierConfig());
 
 export const resetPresenceTierConfig = (): void => {
   cachedConfig = null;

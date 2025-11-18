@@ -1,5 +1,5 @@
 import type { Pool } from 'pg';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { env } from '../../src/config/env.js';
 import { PresenceDao } from '../../src/state/presenceDao.js';
@@ -7,6 +7,7 @@ import { PresenceDecayProcessor } from '../../src/state/presenceDecayProcessor.j
 import type { PresenceDecayState } from '../../src/state/presenceTypes.js';
 import { applyPresenceIncrement } from '../../src/state/presenceLifecycle.js';
 import { getPresenceTierConfig, resetPresenceTierConfig } from '../../src/state/presenceTiers.js';
+import { loadTestWorld } from '../helpers/world.js';
 
 interface FakeRow {
   player_id: string;
@@ -162,6 +163,10 @@ class FakePool {
 
 describe('presence decay integration flow', () => {
   const originalPresenceConfig = clonePresenceConfig();
+
+  beforeAll(async () => {
+    await loadTestWorld();
+  });
 
   beforeEach(() => {
     restorePresenceConfig(originalPresenceConfig);

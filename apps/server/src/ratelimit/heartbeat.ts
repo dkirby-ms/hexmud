@@ -1,6 +1,6 @@
 import { TokenBucket, type TokenBucketOptions } from './tokenBucket.js';
 
-export interface HeartbeatRateLimiterOptions extends TokenBucketOptions {}
+export type HeartbeatRateLimiterOptions = TokenBucketOptions;
 
 const invalidTokenAttempts = new Map<string, number>();
 

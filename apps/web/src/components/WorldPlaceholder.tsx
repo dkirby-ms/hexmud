@@ -1,8 +1,8 @@
 import type { FC } from 'react';
 import { useCallback } from 'react';
 
-import { useGameConnection } from '../hooks/useGameConnection.js';
 import { useAuth } from '../hooks/useAuth.js';
+import { useGameConnection } from '../hooks/useGameConnection.js';
 
 const formatLatency = (latencyMs?: number) =>
   typeof latencyMs === 'number' ? `${latencyMs.toFixed(0)} ms` : '—';

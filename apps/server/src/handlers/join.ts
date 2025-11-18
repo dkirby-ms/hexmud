@@ -1,15 +1,14 @@
-
 import { type ErrorCode } from '@hexmud/protocol';
 import type { Client } from 'colyseus';
 
+import { extractRoles } from '../auth/extractRoles.js';
+import { getOpenIdConfiguration, OpenIdConfigurationError } from '../auth/openidConfiguration.js';
 import {
   AccessTokenValidationError,
   type AccessTokenClaims,
   type AccessTokenValidationReason,
   validateAccessToken
 } from '../auth/validateToken.js';
-import { extractRoles } from '../auth/extractRoles.js';
-import { getOpenIdConfiguration, OpenIdConfigurationError } from '../auth/openidConfiguration.js';
 import { env } from '../config/env.js';
 import type { AuthLogEvent } from '../logging/events.js';
 import { logger } from '../logging/logger.js';
@@ -159,7 +158,7 @@ export const processJoinRequest = async ({
     } catch (error) {
       let failureReason: AuthRejectionReason = 'token_invalid';
       let metricsReason: AccessTokenValidationReason = 'other';
-      let logReason: string = 'other';
+  let logReason = 'other';
 
       if (error instanceof OpenIdConfigurationError) {
         logReason = `openid_${error.code}`;
